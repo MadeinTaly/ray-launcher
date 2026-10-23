@@ -1,0 +1,1513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0807">
+  <title>RAY</title>
+  <!-- The phone app's own page (served on loopback by the app only). The TV and the browser remote use remote.html. -->
+  <style>
+:root {
+      --bg: #0a0807; --bg2: #100c0b; --card: #161110; --card2: #1f1815; --line: rgb(255 255 255 / 7%);
+      --ink: #f6efe9; --muted: #a8978c; --red: #ff4d4d; --red2: #ff6b4d; --cream: #ffd9b3;
+      --green: #3ddc97; --radius: 22px;
+      color-scheme: dark;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--bg); color: var(--ink); }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.4;
+      -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none;
+      min-height: 100vh;
+      background: radial-gradient(ellipse 80% 45% at 90% -5%, rgb(255 107 77 / 10%), transparent 70%),
+                  radial-gradient(ellipse 70% 40% at 0% 0%, rgb(255 77 77 / 14%), transparent 70%), var(--bg);
+    }
+    button, input, select { font: inherit; color: inherit; }
+    button { background: none; border: 0; padding: 0; cursor: pointer; }
+    a { color: inherit; }
+    :focus-visible { outline: 3px solid var(--red2); outline-offset: 3px; }
+    .hidden { display: none !important; }
+    svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+
+    .view { max-width: 560px; margin: 0 auto; padding: calc(env(safe-area-inset-top) + 18px) 16px calc(env(safe-area-inset-bottom) + 96px); }
+    .top { display: flex; align-items: center; gap: 12px; min-height: 48px; margin-bottom: 14px; }
+    .top h1 { flex: 1; margin: 0; font-size: 1.6rem; font-weight: 600; letter-spacing: -.02em; }
+    .icon-btn { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; color: var(--ink); }
+    .icon-btn:active { background: var(--card2); }
+    .wordmark { font-weight: 700; letter-spacing: -.03em;
+      background: linear-gradient(90deg, #ffe3d1 0%, #ff8a6b 38%, #ff5a5a 52%, #ffb38a 62%, #ffd9b3 100%);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      filter: drop-shadow(0 0 14px rgb(255 77 77 / 35%)); }
+    .spark { color: var(--red); font-size: .8em; vertical-align: super; margin-left: 2px; text-shadow: 0 0 10px var(--red); }
+    .tagline { font-family: ui-monospace, "Roboto Mono", monospace; color: #ddd0c7; font-size: .95rem; }
+
+    .card { background: linear-gradient(180deg, var(--card), var(--bg2)); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+    .stack > * + * { margin-top: 12px; }
+    .muted { color: var(--muted); }
+    .small { font-size: .85rem; }
+    .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); margin-right: 6px; vertical-align: 1px; }
+    .dot.on { background: var(--green); box-shadow: 0 0 8px var(--green); }
+    .status-on { color: var(--green); }
+
+    /* power button */
+    .power { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0;
+      background: #2c221e; color: #d9ccc4; transition: background .2s, box-shadow .2s; }
+    .power.on { background: radial-gradient(circle at 35% 30%, #ff8080, var(--red) 60%); color: #fff; box-shadow: 0 0 22px rgb(255 77 77 / 55%); }
+    .power svg.i { width: 26px; height: 26px; stroke-width: 2.2; }
+
+    /* device card on home */
+    .device { display: flex; align-items: center; gap: 14px; }
+    .device-ic { width: 44px; height: 44px; display: grid; place-items: center; color: var(--red2); }
+    .device-ic svg.i { width: 32px; height: 32px; stroke-width: 1.6; }
+    .device-txt { flex: 1; min-width: 0; text-align: left; }
+    .device-name { font-size: 1.1rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .preview { position: relative; margin-top: 14px; border-radius: 16px; overflow: hidden; aspect-ratio: 16 / 9; background: linear-gradient(160deg, #cfd8e6 0%, #7f93b3 45%, #26334d 100%); }
+        .preview .tint, .preview .dim { position: absolute; inset: 0; transition: background .25s; pointer-events: none; }
+
+    /* scenes row */
+    .scenes { display: flex; gap: 10px; overflow-x: auto; padding: 4px 2px 6px; margin: 16px -2px 4px; scrollbar-width: none; }
+    .scenes::-webkit-scrollbar { display: none; }
+    .scene { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 72px; }
+    .scene .ring { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: var(--card2); border: 1px solid var(--line); color: #eadfd8; transition: .2s; }
+    .scene span { font-size: .8rem; color: #ddd0c7; white-space: nowrap; }
+    .scene[aria-pressed="true"] .ring { background: radial-gradient(circle at 40% 30%, #6b2a33, #3a1720); border: 2px solid var(--red); color: #ffd0c4; box-shadow: 0 0 18px rgb(255 77 77 / 45%); }
+    .scene[aria-pressed="true"] span { color: var(--ink); font-weight: 600; }
+
+    /* sliders */
+    .slider-card { display: grid; grid-template-columns: 32px 1fr auto; align-items: center; gap: 4px 12px; }
+    .slider-card .lbl { font-weight: 600; }
+    .slider-card .val { color: #ddd0c7; font-variant-numeric: tabular-nums; }
+    .slider-card input { grid-column: 2 / 4; }
+    .slider-card .ic { grid-row: 1 / 3; align-self: center; }
+    .ic-red { color: var(--red); } .ic-cream { color: var(--cream); } .ic-amber { color: #ffb15c; }
+    input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 28px; background: transparent; margin: 0; --p: 50%; --c1: var(--red); --c2: var(--red2); }
+    input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 6px; background: linear-gradient(90deg, var(--c1), var(--c2) var(--p), #2c221e var(--p)); }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; margin-top: -9px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 5px rgb(255 255 255 / 12%), 0 2px 8px rgb(0 0 0 / 50%); }
+    input[type=range]::-moz-range-track { height: 6px; border-radius: 6px; background: #2c221e; }
+    input[type=range]::-moz-range-progress { height: 6px; border-radius: 6px; background: linear-gradient(90deg, var(--c1), var(--c2)); }
+    input[type=range]::-moz-range-thumb { width: 24px; height: 24px; border: 0; border-radius: 50%; background: #fff; }
+    #r-red { --c1: #ff3b3b; --c2: #ff7a5c; }
+    #r-bright { --c1: #b9a48e; --c2: #ffe2bd; }
+    #r-temp { --c1: #ff7a2e; --c2: #ffc98a; }
+
+    .row-link { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; }
+    .row-link .grow { flex: 1; min-width: 0; }
+    .row-link .t { font-weight: 600; }
+    .chev { color: var(--muted); }
+
+    .slider-card.nic { grid-template-columns: 1fr auto; }
+    .slider-card.nic input { grid-column: 1 / 3; }
+    input[type=range]:disabled { cursor: not-allowed; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip { min-height: 40px; padding: 8px 14px; border-radius: 999px; background: var(--card2); border: 1px solid var(--line); color: #ddd0c7; font-weight: 500; font-size: .9rem; }
+    .chip[aria-pressed="true"] { border: 2px solid var(--red); padding: 7px 13px; color: var(--ink); background: #2e1915; }
+    .chip.reset { color: #ffb38a; }
+    .au-ctl.off { opacity: .45; pointer-events: none; }
+
+    .banner { display: flex; gap: 12px; align-items: center; text-decoration: none; border-color: rgb(255 77 77 / 45%); background: linear-gradient(180deg, #2a1418, #1a0f0d); }
+
+    /* lists (scenes, devices) */
+    .list > * + * { margin-top: 12px; }
+    .item { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 12px; border-radius: var(--radius); background: linear-gradient(180deg, var(--card), var(--bg2)); border: 1px solid var(--line); }
+    .item.active { border-color: rgb(255 77 77 / 55%); background: linear-gradient(180deg, #221512, #170f0d); }
+    .thumb { width: 84px; height: 64px; border-radius: 14px; flex-shrink: 0; display: grid; place-items: center; color: #fff; position: relative; overflow: hidden; }
+    .thumb svg.i { width: 30px; height: 30px; filter: drop-shadow(0 1px 3px rgb(0 0 0 / 60%)); }
+    .thumb.dashed { background: transparent; border: 1.5px dashed #4a3a34; color: var(--muted); }
+    .item .grow { flex: 1; min-width: 0; }
+    .item .t { font-weight: 600; font-size: 1.02rem; }
+    .item .d { color: var(--muted); font-size: .85rem; }
+    .radio { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #5a4842; display: grid; place-items: center; flex-shrink: 0; }
+    .radio.on { background: var(--red); border-color: var(--red); color: #fff; }
+    .radio svg.i { width: 15px; height: 15px; stroke-width: 3; }
+    .dev-ic { width: 56px; height: 56px; display: grid; place-items: center; color: #d9ccc4; flex-shrink: 0; }
+    .dev-ic svg.i { width: 36px; height: 36px; stroke-width: 1.5; }
+    .add-ic { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: #2c211d; color: #eadfd8; flex-shrink: 0; margin: 6px; }
+
+    /* buttons */
+    .btn { text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 54px; border-radius: 999px; font-weight: 600; font-size: 1.05rem; }
+    .btn-grad { background: linear-gradient(90deg, #ff4d4d, #ff6b4d 50%, #ffa53d); color: #fff; box-shadow: 0 8px 28px rgb(255 107 77 / 30%); }
+    .btn-soft { background: var(--card2); color: var(--ink); border: 1px solid var(--line); }
+    .btn-danger { background: transparent; color: #ff8a7a; border: 1px solid rgb(255 77 77 / 40%); }
+    .link-btn { color: #ffb38a; font-weight: 500; padding: 12px; display: inline-flex; gap: 8px; align-items: center; }
+    .seg { display: flex; gap: 6px; background: var(--card2); padding: 4px; border-radius: 999px; }
+    .seg button { flex: 1; min-height: 40px; border-radius: 999px; color: var(--muted); font-weight: 600; }
+    .seg button[aria-pressed="true"] { background: #3d2b24; color: var(--ink); }
+    .field { display: block; width: 100%; min-height: 50px; padding: 12px 16px; border-radius: 14px; border: 1px solid #3a2d28; background: #0e0a09; }
+    .switch { position: relative; width: 52px; height: 30px; flex-shrink: 0; }
+    .switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+    .switch span { position: absolute; inset: 0; border-radius: 99px; background: #3a2c27; transition: .2s; pointer-events: none; }
+    .switch span::before { content: ""; position: absolute; left: 3px; top: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; transition: .2s; }
+    .switch input:checked + span { background: var(--red); }
+    .switch input:checked + span::before { transform: translateX(22px); }
+
+    /* welcome */
+    #v-welcome { padding-bottom: calc(env(safe-area-inset-bottom) + 28px); display: flex; flex-direction: column; min-height: 100vh; }
+    .hero { position: relative; margin: -18px -16px 0; }
+    .hero img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; -webkit-mask-image: linear-gradient(180deg, #000 70%, transparent); mask-image: linear-gradient(180deg, #000 70%, transparent); }
+    .welcome-txt { text-align: center; margin-top: -12px; }
+    .welcome-txt h1 { font-size: 2.6rem; margin: 0 0 10px; }
+    .welcome-actions { margin-top: auto; padding-top: 26px; }
+    .choice { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 14px 16px; border-radius: 20px; background: var(--card); border: 1px solid var(--line); margin-top: 12px; }
+    .choice .grow { flex: 1; }
+    .choice .t { font-weight: 600; }
+
+    .check-row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 10px 12px; border-radius: 16px; background: var(--card2); border: 1px solid var(--line); }
+    .check-row .grow { flex: 1; min-width: 0; }
+    .check-row .box { width: 24px; height: 24px; border-radius: 7px; border: 2px solid #5a4842; display: grid; place-items: center; flex-shrink: 0; color: #fff; }
+    .check-row[aria-checked="true"] .box { background: var(--red); border-color: var(--red); }
+    .check-row .box svg.i { width: 15px; height: 15px; stroke-width: 3; }
+    .check-row .dev-ic { width: 36px; height: 36px; } .check-row .dev-ic svg.i { width: 26px; height: 26px; }
+    .sync-card { display: flex; align-items: center; gap: 14px; }
+    .types { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .type-opt { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 4px; border-radius: 16px; background: var(--card2); border: 1px solid var(--line); color: #ddd0c7; font-size: .82rem; }
+    .type-opt svg.i { width: 28px; height: 28px; }
+    .type-opt[aria-pressed="true"] { border: 2px solid var(--red); color: var(--ink); background: #2e1915; }
+
+    /* setup checklist */
+    .step { display: flex; gap: 14px; align-items: flex-start; }
+    .step-n { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; font-weight: 700; background: #2c221e; color: var(--ink); }
+    .step-n.done { background: var(--green); color: #06231a; }
+    .step-n svg.i { width: 18px; height: 18px; stroke-width: 3; }
+    .step .grow { flex: 1; min-width: 0; }
+    .step .t { font-weight: 600; font-size: 1.05rem; }
+    .tag { display: inline-block; font-size: .72rem; font-weight: 700; padding: 2px 8px; border-radius: 99px; margin-left: 6px; vertical-align: 2px; }
+    .tag.req { background: rgb(255 77 77 / 18%); color: #ff9a8a; }
+    .tag.rec { background: rgb(255 177 92 / 18%); color: #ffb38a; }
+    .step .btn { margin-top: 10px; min-height: 46px; font-size: .95rem; }
+    .btn[disabled] { opacity: .45; }
+
+    /* bottom navigation */
+    #tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: flex; justify-content: space-around;
+      padding: 8px 8px calc(env(safe-area-inset-bottom) + 8px); background: rgb(10 8 7 / 94%); border-top: 1px solid var(--line);
+      -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+    #tabs button { flex: 1; max-width: 120px; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 0; color: #a8978c; font-size: .78rem; }
+    #tabs button[aria-current="page"] { color: var(--red); }
+    #tabs button[aria-current="page"] svg.i { filter: drop-shadow(0 0 6px rgb(255 77 77 / 70%)); }
+
+    /* bottom sheet */
+    #sheet-wrap { position: fixed; inset: 0; z-index: 20; background: rgb(0 0 0 / 70%); display: flex; align-items: flex-end; justify-content: center; }
+    #sheet { width: 100%; max-width: 560px; max-height: 88vh; overflow-y: auto; background: #15100e; border-radius: 26px 26px 0 0; border: 1px solid var(--line);
+      padding: 10px 18px calc(env(safe-area-inset-bottom) + 22px); }
+    #sheet .grab { width: 40px; height: 4px; border-radius: 4px; background: #4a3a34; margin: 0 auto 14px; }
+    #sheet h2 { margin: 0 0 12px; font-size: 1.3rem; }
+    #toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 92px); transform: translateX(-50%); z-index: 30;
+      background: #2a201c; color: var(--ink); padding: 10px 18px; border-radius: 999px; font-size: .9rem; box-shadow: 0 6px 20px rgb(0 0 0 / 40%); }
+    ol.steps { padding-left: 20px; margin: 0; color: #ddd0c7; } ol.steps li + li { margin-top: 6px; }
+
+    day-rhythm {
+      display: block;
+      --dr-bg: var(--bg); --dr-surface: var(--card); --dr-surface-soft: var(--card2);
+      --dr-ink: var(--ink); --dr-muted: var(--muted); --dr-accent: var(--red2);
+      --dr-accent-soft: #3a1f1a; --dr-accent-ink: #0a0807; --dr-focus: var(--red2);
+      --dr-danger: #ff8a7a; --dr-border: #3a2d28; --dr-shadow: 0 12px 40px rgb(0 0 0 / 35%);
+      --dr-overlay: #0a0807cc; --dr-now: var(--red);
+    }
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  </style>
+</head>
+<body>
+
+<!-- Welcome: shown on the first start -->
+<section id="v-welcome" class="view hidden">
+  <div class="hero"><img src="/icon-512.png" alt=""></div>
+  <div class="welcome-txt">
+    <h1><span class="wordmark">RAY</span><span class="spark">✦</span></h1>
+    <p class="tagline" data-t="tagline1"></p>
+  </div>
+  <div class="welcome-actions">
+    <button id="w-here" class="choice" type="button">
+      <span class="dev-ic" data-icon="phone"></span>
+      <span class="grow"><span class="t" data-t="useHere"></span><br><span class="muted small" data-t="useHereSub"></span></span>
+      <span class="chev" data-icon="chev"></span>
+    </button>
+    <button id="w-connect" class="choice" type="button">
+      <span class="dev-ic" data-icon="tv"></span>
+      <span class="grow"><span class="t" data-t="connectTv"></span><br><span class="muted small" data-t="connectTvSub"></span></span>
+      <span class="chev" data-icon="chev"></span>
+    </button>
+  </div>
+</section>
+
+<!-- Setup of this device: the permissions the filter needs -->
+<section id="v-setup" class="view hidden">
+  <div class="top">
+    <button class="icon-btn" type="button" id="su-back" data-al="back" data-icon="back"></button>
+    <h1 data-t="setupTitle"></h1>
+  </div>
+  <div class="stack">
+    <p class="muted" style="margin:0" data-t="setupIntro"></p>
+    <div class="card step">
+      <span class="step-n" id="su-n1">1</span>
+      <div class="grow">
+        <div class="t"><span data-t="stOverlay"></span><span class="tag req" data-t="required"></span></div>
+        <div class="small muted" id="su-t1"></div>
+        <a class="btn btn-grad" id="su-b1" href="raylauncher-app://overlay" data-t="allow"></a>
+      </div>
+    </div>
+    <div class="card step" id="su-s2">
+      <span class="step-n" id="su-n2">2</span>
+      <div class="grow">
+        <div class="t"><span data-t="stA11y"></span><span class="tag rec" data-t="recommended"></span></div>
+        <div class="small muted" id="su-t2"></div>
+        <a class="btn btn-soft" id="su-b2" href="raylauncher-app://accessibility" data-t="enable"></a>
+      </div>
+    </div>
+    <button class="btn btn-grad" type="button" id="su-done" data-t="setupDone"></button>
+    <p class="small muted" style="margin:0;text-align:center" id="su-hint"></p>
+    <button class="link-btn" type="button" id="su-tv" style="width:100%;justify-content:center"><span data-t="orConnect"></span></button>
+  </div>
+</section>
+
+<!-- Home -->
+<section id="v-home" class="view hidden">
+  <div class="top">
+    <h1><span class="wordmark">RAY</span><span class="spark">✦</span></h1>
+    <button class="icon-btn" type="button" data-go="settings" data-al="settings" data-icon="gear"></button>
+  </div>
+  <div class="stack">
+    <a id="perm-banner" class="card banner hidden" href="#" data-sub="setup">
+      <span class="ic-red" data-icon="alert"></span><span class="small" data-t="permBanner"></span>
+    </a>
+    <div class="card">
+      <div class="device">
+        <button id="h-dev" class="device" type="button" style="flex:1;min-width:0">
+          <span class="device-ic" id="h-dev-ic"></span>
+          <span class="device-txt">
+            <span class="device-name" id="h-dev-name"></span><br>
+            <span class="small" id="h-dev-status"></span>
+          </span>
+        </button>
+        <button id="h-power" class="power" type="button" data-al="power" data-icon="power"></button>
+      </div>
+      <div class="preview" aria-hidden="true"><div class="tint" id="pv-tint"></div><div class="dim" id="pv-dim"></div></div>
+      <div class="scenes" id="h-scenes" role="group"></div>
+    </div>
+    <div class="card slider-card">
+      <span class="ic ic-red" data-icon="sun"></span><label class="lbl" for="r-red" data-t="red"></label><span class="val" id="v-red"></span>
+      <input id="r-red" type="range" min="0" max="100" step="5">
+    </div>
+    <div class="card slider-card">
+      <span class="ic ic-cream" data-icon="bright"></span><label class="lbl" for="r-bright" data-t="bright"></label><span class="val" id="v-bright"></span>
+      <input id="r-bright" type="range" min="5" max="100" step="5">
+    </div>
+    <div class="card slider-card">
+      <span class="ic ic-amber" data-icon="thermo"></span><label class="lbl" for="r-temp" data-t="temp"></label><span class="val" id="v-temp"></span>
+      <input id="r-temp" type="range" min="1000" max="4000" step="100">
+    </div>
+    <button class="card row-link" type="button" data-go="schedule">
+      <span class="ic-amber" data-icon="clock"></span>
+      <span class="grow"><span class="t" data-t="schedTitle"></span><br><span class="small muted" id="h-sched"></span></span>
+      <span class="chev" data-icon="chev"></span>
+    </button>
+    <button class="card row-link hidden" type="button" id="h-audio-row" data-go="audio">
+      <span class="ic-red" data-icon="audio"></span>
+      <span class="grow"><span class="t" data-t="audioTitle"></span><br><span class="small muted" id="h-audio"></span></span>
+      <span class="chev" data-icon="chev"></span>
+    </button>
+  </div>
+</section>
+
+<!-- Devices -->
+<section id="v-devices" class="view hidden">
+  <div class="top"><h1 data-t="devices"></h1><button class="icon-btn" type="button" id="d-add-top" data-al="addDevice" data-icon="plus"></button></div>
+  <div class="list" id="d-list"></div>
+</section>
+
+<!-- Scenes -->
+<section id="v-scenes" class="view hidden">
+  <div class="top"><h1 data-t="scenes"></h1><button class="icon-btn" type="button" id="s-add-top" data-al="newScene" data-icon="plus"></button></div>
+  <div class="list" id="s-list"></div>
+</section>
+
+<!-- Settings -->
+<section id="v-settings" class="view hidden">
+  <div class="top"><h1 data-t="settings"></h1></div>
+  <div class="stack">
+    <div class="card stack">
+      <div class="t" style="font-weight:600" data-t="language"></div>
+      <div class="seg" role="group"><button type="button" class="lang" data-lang="auto" data-t="langAuto"></button><button type="button" class="lang" data-lang="en">English</button><button type="button" class="lang" data-lang="it">Italiano</button></div>
+    </div>
+    <div class="card sync-card">
+      <span class="ic-red" data-icon="audio"></span>
+      <span class="grow" style="flex:1;min-width:0"><span class="t" style="font-weight:600" data-t="audioSetting"></span><br><span class="small muted" data-t="audioSettingSub"></span></span>
+      <label class="switch"><input id="st-audio" type="checkbox"><span></span></label>
+    </div>
+    <button class="card row-link" type="button" data-sub="setup">
+      <span class="ic-red" data-icon="phone"></span>
+      <span class="grow"><span class="t" data-t="setupTitle"></span><br><span class="small muted" id="st-setup"></span></span>
+      <span class="chev" data-icon="chev"></span>
+    </button>
+    <div class="card stack">
+      <button type="button" class="row-link" id="st-welcome"><span class="grow" data-t="showWelcome"></span><span class="chev" data-icon="chev"></span></button>
+      <a class="row-link" href="https://github.com/MadeinTaly/ray-launcher" style="text-decoration:none"><span class="grow" data-t="source"></span><span class="chev" data-icon="chev"></span></a>
+      <a class="row-link" href="https://linktr.ee/made_in_Taly" style="text-decoration:none"><span class="grow" data-t="support"></span><span class="chev" data-icon="chev"></span></a>
+      <p class="small muted" style="margin:0" id="st-version"></p>
+    </div>
+  </div>
+</section>
+
+<!-- Schedule (opened from Home) -->
+<section id="v-schedule" class="view hidden">
+  <div class="top">
+    <button class="icon-btn" type="button" id="sc-back" data-al="back" data-icon="back"></button>
+    <h1 data-t="schedTitle"></h1>
+  </div>
+  <div class="stack">
+    <p class="small muted" style="margin:0" data-t="schedSub"></p>
+    <div class="card stack">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <span style="font-weight:600" id="sc-dev"></span>
+        <label class="switch"><input id="sched-on" type="checkbox"><span></span></label>
+      </div>
+      <div>
+        <div class="small muted" style="margin-bottom:6px" data-t="weekMode"></div>
+        <div class="seg" role="group"><button id="wk-daily" type="button" data-t="weekDaily"></button><button id="wk-week" type="button" data-t="weekWeekly"></button></div>
+      </div>
+      <div>
+        <label class="small muted" for="transition" style="display:block;margin-bottom:6px" data-t="transition"></label>
+        <select id="transition" class="field">
+          <option value="0" data-t="trOff"></option><option value="15">15 min</option><option value="30">30 min</option><option value="60">60 min</option>
+        </select>
+        <p class="small muted" style="margin:8px 0 0" data-t="transitionHelp"></p>
+      </div>
+    </div>
+    <day-rhythm id="rhythm"></day-rhythm>
+    <p id="save-status" class="small muted" role="status" aria-live="polite"></p>
+  </div>
+</section>
+
+<!-- Audio (opened from Home, only when enabled in Settings) -->
+<section id="v-audio" class="view hidden">
+  <div class="top">
+    <button class="icon-btn" type="button" id="au-back" data-al="back" data-icon="back"></button>
+    <h1 data-t="audioTitle"></h1>
+  </div>
+  <div class="stack">
+    <div id="au-volbox"></div>
+    <div class="card" id="au-main">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <span style="min-width:0"><span style="font-weight:600" id="au-dev"></span><br><span class="small muted" data-t="audioEffects"></span></span>
+        <label class="switch"><input id="au-on" type="checkbox"><span></span></label>
+      </div>
+    </div>
+    <div class="stack" id="au-body" role="status" aria-live="polite"></div>
+  </div>
+</section>
+
+<nav id="tabs" class="hidden">
+  <button type="button" data-tab="home"><span data-icon="home"></span><span data-t="home"></span></button>
+  <button type="button" data-tab="devices"><span data-icon="tv"></span><span data-t="devices"></span></button>
+  <button type="button" data-tab="scenes"><span data-icon="star"></span><span data-t="scenes"></span></button>
+  <button type="button" data-tab="settings"><span data-icon="gear"></span><span data-t="settings"></span></button>
+</nav>
+
+<div id="sheet-wrap" class="hidden"><div id="sheet" role="dialog" aria-modal="true"></div></div>
+<div id="toast" class="hidden" role="status" aria-live="polite"></div>
+
+<script type="module">
+import * as DR from '/dayrhythm/src/index.js';
+(function () {
+  'use strict';
+  function $(id) { return document.getElementById(id); }
+  function el(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
+
+  // ---- Icons (drawn for this app) ----
+  var P = {
+    home: '<path d="M3 11l9-7 9 7"/><path d="M5 9.5V20h5v-6h4v6h5V9.5"/>',
+    tv: '<rect x="2.5" y="4" width="19" height="12.5" rx="2"/><path d="M8 20.5h8M12 16.5v4"/>',
+    phone: '<rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M11 18.5h2"/>',
+    tablet: '<rect x="3.5" y="3" width="17" height="18" rx="2.5"/><path d="M11 18h2"/>',
+    projector: '<rect x="2.5" y="8" width="19" height="9" rx="2.5"/><circle cx="15.5" cy="12.5" r="2.6"/><path d="M6 11.5h3M6 14h3M5.5 17v2M18.5 17v2"/>',
+    monitor: '<rect x="2.5" y="3.5" width="19" height="13" rx="1.5"/><path d="M12 16.5v3M7.5 20.5h9"/>',
+    other: '<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="15" cy="12" r="1"/>',
+    star: '<path d="M12 3.2l2.6 5.5 6 .8-4.4 4.2 1.1 6-5.3-2.9-5.3 2.9 1.1-6-4.4-4.2 6-.8z"/>',
+    gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M5.5 18.5l1.8-1.8M16.7 7.3l1.8-1.8"/><circle cx="12" cy="12" r="6.6"/>',
+    power: '<path d="M12 3v8.5"/><path d="M7.2 6.3a7.5 7.5 0 1 0 9.6 0"/>',
+    chev: '<path d="M9 5.5l6.5 6.5L9 18.5"/>',
+    back: '<path d="M15 5.5L8.5 12l6.5 6.5"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/>',
+    bright: '<circle cx="12" cy="12" r="4.5"/><path d="M12 7.5v9" /><path d="M12 7.5a4.5 4.5 0 0 1 0 9z" fill="currentColor"/><path d="M12 3v1.5M12 19.5V21M3 12h1.5M19.5 12H21"/>',
+    thermo: '<path d="M10 14.2V5a2 2 0 0 1 4 0v9.2a4 4 0 1 1-4 0z"/><path d="M12 10v6"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/>',
+    film: '<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M7.5 4v16M16.5 4v16M3 9h4.5M3 15h4.5M16.5 9H21M16.5 15H21"/>',
+    cup: '<path d="M4.5 9h11v4.5a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5z"/><path d="M15.5 10.5h1.2a2.6 2.6 0 0 1 0 5.2h-1.5"/><path d="M8 3.5c-.8 1 .8 1.8 0 3M11.5 3.5c-.8 1 .8 1.8 0 3"/>',
+    soft: '<circle cx="12" cy="13" r="3.6"/><path d="M12 5.5v1.6M5.5 13H4M20 13h-1.5M7.2 8.2l1 1M16.8 8.2l-1 1"/><path d="M4 19h16"/>',
+    moon: '<path d="M19.5 14.6A8 8 0 1 1 9.4 4.5a6.4 6.4 0 0 0 10.1 10.1z"/>',
+    deep: '<path d="M17 15.6A7 7 0 1 1 8.4 7a5.6 5.6 0 0 0 8.6 8.6z"/><path d="M17.5 3.5l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8z"/>',
+    spark: '<path d="M12 3.5l1.9 5.6 5.6 1.9-5.6 1.9L12 18.5l-1.9-5.6L4.5 11l5.6-1.9z"/>',
+    check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+    pencil: '<path d="M4 20h4.2L19.4 8.8a2.1 2.1 0 0 0-3-3L5.2 17v3"/>',
+    trash: '<path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13"/>',
+    alert: '<path d="M12 3.5l9.5 16.5h-19z"/><path d="M12 10v4.5M12 17.2v.3"/>',
+    more: '<circle cx="5.5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18.5" cy="12" r="1.6"/>',
+    sync: '<path d="M4 12a8 8 0 0 1 13.7-5.6L20 8.7M20 4v4.7h-4.7"/><path d="M20 12a8 8 0 0 1-13.7 5.6L4 15.3M4 20v-4.7h4.7"/>',
+    copy: '<rect x="8.5" y="8.5" width="12" height="12" rx="2"/><path d="M15.5 8.5V5a1.5 1.5 0 0 0-1.5-1.5H5A1.5 1.5 0 0 0 3.5 5v9A1.5 1.5 0 0 0 5 15.5h3.5"/>',
+    qr: '<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z"/><path d="M14 14h2.5v2.5H14zM17.5 17.5H20V20h-2.5zM14 19v1M20 14v1"/>',
+    audio: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a8 8 0 0 1 0 11"/>',
+    link: '<path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/>'
+  };
+  function icon(name) { return '<svg class="i" viewBox="0 0 24 24" aria-hidden="true">' + (P[name] || '') + '</svg>'; }
+  function paintIcons(root) {
+    Array.prototype.forEach.call((root || document).querySelectorAll('[data-icon]'), function (e) { e.innerHTML = icon(e.getAttribute('data-icon')); });
+  }
+
+  // ---- Texts ----
+  var T = {
+    en: { tagline1: 'Less blue light. More comfortable movie nights.', useHere: 'Use on this device', useHereSub: 'Warm filter and dimming for this phone',
+      connectTv: 'Connect a TV or projector', connectTvSub: 'Control the filter of your TV boxes from here',
+      home: 'Home', devices: 'Devices', scenes: 'Scenes', settings: 'Settings', back: 'Back', power: 'Filter on / off',
+      red: 'Warm filter', bright: 'Brightness', temp: 'Colour temperature', schedTitle: 'Schedule',
+      connected: 'Connected', offline: 'Offline', filterOn: 'filter on', filterOff: 'filter off', checking: 'Connecting…',
+      thisDevice: 'This device', local: 'This phone', localTablet: 'This tablet', schedOff: 'Off', schedOn: 'On', schedNext: 'next: {name} at {time}',
+      permBanner: 'Allow “Display over other apps” so the filter can be drawn on this phone. Tap here.',
+      permButton: 'Allow display over other apps', permOk: 'The filter can be drawn over other apps.', permMissing: 'The filter needs the “Display over other apps” permission.',
+      a11yText: 'Android 12+ limits overlays to 80% darkness. For full darkness and to cover the system bars, enable RAY in Accessibility (optional, it reads nothing).',
+      setupTitle: 'Set up this device', setupIntro: 'For the warm filter and the dimming to work on this phone, Android needs your permission. It takes a few seconds.',
+      stA11y: 'Accessibility (full darkness)', stOverlay: 'Display over other apps', required: 'Required', recommended: 'Recommended', allow: 'Allow', enable: 'Enable', done: 'Done',
+      stOverlayText: 'Lets RAY draw the filter over the screen. In the list, find RAY and turn the switch on, then come back here.',
+      stA11yText: 'Without it, Android 12 and later cap the filter at 80% darkness and leave the status bar uncovered. In Accessibility, open RAY (it may be under Installed apps or Downloaded apps) and turn it on. It reads nothing on the screen.',
+      stA11yOn: 'On: full darkness, system bars covered.', setupDone: 'Start using it', setupNeed: 'Allow “Display over other apps” first: without it nothing changes on the screen.',
+      orConnect: 'Or control a TV or projector instead', setupOk: 'Ready', setupMissing: 'Permission missing: the filter cannot be shown', setupA11y: 'Ready, full darkness not enabled',
+      needSetup: 'Set up this device first',
+      a11yButton: 'Open Accessibility settings', language: 'Language', langAuto: 'Automatic',
+      popTitle: 'One step before it works', popText: 'Android has not allowed RAY to draw over other apps yet, so the filter cannot appear on this phone. Give the permission now: it takes a few seconds.',
+      popA11yTitle: 'For full darkness', popA11yText: 'On this Android version the filter stops at 80% darkness and does not cover the status bar unless RAY is enabled in Accessibility. It is optional and it reads nothing on the screen.',
+      setupNow: 'Set up now', later: 'Later', gotIt: 'OK', showWelcome: 'Show the welcome screen', source: 'Source code', support: 'Support the project', version: 'Version {v}',
+      addDevice: 'Add device', addSub: 'TV, projector or another phone', scanQr: 'Scan the QR code',
+      addSteps: ['On the TV, open RAY: the QR code is on the right (Phone remote on).', 'Tap Scan the QR code and point the camera at it.', 'RAY opens again with the TV saved. If the camera shows a link instead, tap it and choose RAY.'],
+      noCamera: 'No camera app found: paste the link instead',
+      options: 'Options', applyTo: 'Apply to…', applyTitle: 'Apply “{name}” to…', applyWhat: 'What to copy', applyFilter: 'Filter settings (warm filter, brightness, colour)',
+      applySched: 'Schedule and saved days', applyGo: 'Apply to {n} devices', applyGo1: 'Apply to 1 device', applyNone: 'Choose at least one device',
+      applied: 'Applied to {n} of {t}', appliedFail: 'not reachable: {names}', applying: 'Applying…', noOthers: 'There are no other devices yet: add one first.',
+      sync: 'Sync all devices', syncSub: 'Every change you make goes to all your saved TVs at once ({n}). This phone is not included.', syncOn: 'sync on', syncDone: 'All TVs now follow “{name}”',
+      foundTitle: 'Found on your network', foundHint: 'Enter the code shown on its screen under the QR code', searching: 'Looking for TVs with RAY (Phone remote on)…', noneFound: 'None found yet: on the TV, open RAY and turn on Phone remote.',
+      manual: 'Or add it by hand, with what the TV shows under the QR code', address: 'Address', code: 'Code', add: 'Add',
+      badLink: 'Check the address and the code shown on the TV', needCode: 'Enter the code shown on the TV under the QR code',
+      added: 'Device added', rename: 'Name', save: 'Save', remove: 'Remove device', removeAgain: 'Tap again to remove', removed: 'Device removed', cancel: 'Cancel',
+      type: 'Type', types: { projector: 'Projector', tv: 'TV', tablet: 'Tablet', phone: 'Phone', monitor: 'Monitor', other: 'Other' },
+      newScene: 'New scene', custom: 'Custom', customSub: 'Create your own scene.', sceneName: 'Scene name', sceneSaved: 'Scene saved', deleteScene: 'Delete scene',
+      keyChanged: 'Pairing code changed: scan the TV’s QR code again', unreachable: 'Not reachable: is it on and on the same network?',
+      schedSub: 'The device changes setting by itself, even with the phone off. Changes are saved automatically.',
+      weekMode: 'Days', weekDaily: 'Same every day', weekWeekly: 'Per weekday', transition: 'Transition', trOff: 'Off',
+      transitionHelp: 'Values glide gradually into the next slot. A manual change lasts until the next slot.',
+      saving: 'Saving…', saved: 'Saved', error: 'Error, not saved',
+      models: { off: 'Off', soft: 'Soft', evening: 'Relax', cinema: 'Movie', night: 'Night', deep: 'Deep night', custom: 'Custom' },
+      desc: { soft: 'A light touch of warmth.', evening: 'Warm and calm, for the evening.', cinema: 'Reduced blue light, still bright enough for films.', night: 'Very warm and dim.', deep: 'Darkest and reddest.' },
+      fields: { red: 'Warm filter', bright: 'Brightness', temp: 'Colour' },
+      fasce: { morning: 'Morning', afternoon: 'Afternoon', evening: 'Evening', film: 'Movie', night: 'Night' },
+      presets: { movie: 'Movie night', early: 'Early to bed', late: 'Night owl' },
+      audioTitle: 'Audio', audioSetting: 'Audio controls', audioSettingSub: 'Equalizer, bass and sound effects of the device, if its audio supports them',
+      audioOff: 'Off', audioOn: 'On', audioCustom: 'Custom', audioFlat: 'Flat', audioNo: 'Not supported on this device',
+      audioEffects: 'Audio effects on this device', audioNoText: 'This device’s audio does not support global effects.', audioVolume: 'Volume', audioPause: 'Equalizer and effects pause while the playing app uses audio effects of its own (for example a video player’s volume boost). To apply them to that app anyway, allow it once from a computer:', audioFollow: 'The effects follow the app that is playing.', audioNeedOn: 'Turn on audio effects to use them',
+      audioPresets: 'Music', audioVideo: 'Video', vp: { dialogue: 'Dialogue', cinema: 'Cinema', night: 'Night', action: 'Action', sport: 'Sport' }, audioReset: 'Reset', audioEq: 'Equalizer', audioBass: 'Bass boost', audioVirt: 'Surround', audioLoud: 'Loudness', audioApply: 'Audio settings' },
+    it: { tagline1: 'Meno luce blu. Serate film più rilassanti.', useHere: 'Usa su questo dispositivo', useHereSub: 'Filtro caldo e attenuazione per questo telefono',
+      connectTv: 'Collega un TV o proiettore', connectTvSub: 'Controlla da qui il filtro dei tuoi TV box',
+      home: 'Home', devices: 'Dispositivi', scenes: 'Scene', settings: 'Impostazioni', back: 'Indietro', power: 'Filtro acceso / spento',
+      red: 'Filtro caldo', bright: 'Luminosità', temp: 'Temperatura colore', schedTitle: 'Programmazione',
+      connected: 'Connesso', offline: 'Non raggiungibile', filterOn: 'filtro acceso', filterOff: 'filtro spento', checking: 'Connessione…',
+      thisDevice: 'Questo dispositivo', local: 'Questo telefono', localTablet: 'Questo tablet', schedOff: 'Spenta', schedOn: 'Attiva', schedNext: 'prossima: {name} alle {time}',
+      permBanner: 'Consenti “Mostra sopra altre app” per disegnare il filtro su questo telefono. Tocca qui.',
+      permButton: 'Consenti mostra sopra altre app', permOk: 'Il filtro può essere disegnato sopra le altre app.', permMissing: 'Il filtro ha bisogno del permesso “Mostra sopra altre app”.',
+      a11yText: 'Android 12+ limita gli overlay all’80% di scuro. Per il buio totale e per coprire le barre di sistema, attiva RAY in Accessibilità (facoltativo, non legge nulla).',
+      setupTitle: 'Configura questo dispositivo', setupIntro: 'Perché filtro caldo e attenuazione funzionino su questo telefono, Android ha bisogno del tuo permesso. Bastano pochi secondi.',
+      stA11y: 'Accessibilità (buio totale)', stOverlay: 'Mostra sopra altre app', required: 'Obbligatorio', recommended: 'Consigliato', allow: 'Consenti', enable: 'Attiva', done: 'Fatto',
+      stOverlayText: 'Permette a RAY di disegnare il filtro sopra lo schermo. Nell’elenco trova RAY e attiva l’interruttore, poi torna qui.',
+      stA11yText: 'Senza, da Android 12 il filtro si ferma all’80% di scuro e non copre la barra di stato. In Accessibilità apri RAY (può essere sotto App installate o App scaricate) e attivalo. Non legge niente sullo schermo.',
+      stA11yOn: 'Attivo: buio totale, barre di sistema coperte.', setupDone: 'Inizia a usarlo', setupNeed: 'Prima consenti “Mostra sopra altre app”: senza, sullo schermo non cambia nulla.',
+      orConnect: 'Oppure controlla un TV o proiettore', setupOk: 'Pronto', setupMissing: 'Permesso mancante: il filtro non può essere mostrato', setupA11y: 'Pronto, buio totale non attivo',
+      needSetup: 'Prima configura questo dispositivo',
+      a11yButton: 'Apri impostazioni Accessibilità', language: 'Lingua', langAuto: 'Automatica',
+      popTitle: 'Manca un passaggio', popText: 'Android non ha ancora permesso a RAY di mostrarsi sopra le altre app, quindi il filtro non può comparire su questo telefono. Dai il permesso ora: bastano pochi secondi.',
+      popA11yTitle: 'Per il buio totale', popA11yText: 'Su questa versione di Android il filtro si ferma all’80% di scuro e non copre la barra di stato, a meno che RAY sia attivo in Accessibilità. È facoltativo e non legge nulla sullo schermo.',
+      setupNow: 'Configura ora', later: 'Più tardi', gotIt: 'OK', showWelcome: 'Mostra la schermata iniziale', source: 'Codice sorgente', support: 'Sostieni il progetto', version: 'Versione {v}',
+      addDevice: 'Aggiungi dispositivo', addSub: 'TV, proiettore o un altro telefono', scanQr: 'Scansiona il QR',
+      addSteps: ['Sul TV apri RAY: il QR è a destra (Telecomando dal telefono attivo).', 'Tocca Scansiona il QR e inquadralo con la fotocamera.', 'RAY si riapre con il TV salvato. Se la fotocamera mostra un link, toccalo e scegli RAY.'],
+      noCamera: 'Nessuna app fotocamera: incolla il link',
+      options: 'Opzioni', applyTo: 'Applica anche a…', applyTitle: 'Applica “{name}” anche a…', applyWhat: 'Cosa copiare', applyFilter: 'Impostazioni del filtro (filtro caldo, luminosità, colore)',
+      applySched: 'Programmazione e giornate salvate', applyGo: 'Applica a {n} dispositivi', applyGo1: 'Applica a 1 dispositivo', applyNone: 'Scegli almeno un dispositivo',
+      applied: 'Applicato a {n} su {t}', appliedFail: 'non raggiungibili: {names}', applying: 'Applico…', noOthers: 'Non ci sono ancora altri dispositivi: aggiungine uno.',
+      sync: 'Sincronizza tutti i dispositivi', syncSub: 'Ogni modifica che fai va a tutti i TV salvati insieme ({n}). Questo telefono è escluso.', syncOn: 'sincronizzati', syncDone: 'Tutti i TV ora seguono “{name}”',
+      foundTitle: 'Trovati in rete', foundHint: 'Inserisci il codice mostrato sul suo schermo sotto il QR', searching: 'Cerco TV con RAY (telecomando dal telefono attivo)…', noneFound: 'Nessuno ancora: sul TV apri RAY e attiva Telecomando dal telefono.',
+      manual: 'Oppure aggiungilo a mano, con quello che il TV mostra sotto il QR', address: 'Indirizzo', code: 'Codice', add: 'Aggiungi',
+      badLink: 'Controlla indirizzo e codice mostrati sul TV', needCode: 'Inserisci il codice mostrato sul TV sotto il QR',
+      added: 'Dispositivo aggiunto', rename: 'Nome', save: 'Salva', remove: 'Rimuovi dispositivo', removeAgain: 'Tocca di nuovo per rimuovere', removed: 'Dispositivo rimosso', cancel: 'Annulla',
+      type: 'Tipo', types: { projector: 'Proiettore', tv: 'TV', tablet: 'Tablet', phone: 'Telefono', monitor: 'Monitor', other: 'Altro' },
+      newScene: 'Nuova scena', custom: 'Personalizzata', customSub: 'Crea la tua scena.', sceneName: 'Nome della scena', sceneSaved: 'Scena salvata', deleteScene: 'Elimina scena',
+      keyChanged: 'Codice di abbinamento cambiato: inquadra di nuovo il QR del TV', unreachable: 'Non raggiungibile: è acceso e sulla stessa rete?',
+      schedSub: 'Il dispositivo cambia impostazione da solo, anche col telefono spento. Le modifiche si salvano automaticamente.',
+      weekMode: 'Giorni', weekDaily: 'Uguale ogni giorno', weekWeekly: 'Per giorno', transition: 'Transizione', trOff: 'Nessuna',
+      transitionHelp: 'I valori scivolano gradualmente verso la fascia successiva. Una modifica manuale dura fino alla fascia successiva.',
+      saving: 'Salvataggio…', saved: 'Salvato', error: 'Errore, non salvato',
+      models: { off: 'Spento', soft: 'Tenue', evening: 'Relax', cinema: 'Film', night: 'Notte', deep: 'Notte fonda', custom: 'Personalizzato' },
+      desc: { soft: 'Un tocco di calore.', evening: 'Caldo e rilassante, per la sera.', cinema: 'Meno luce blu, ma luminoso abbastanza per i film.', night: 'Molto caldo e attenuato.', deep: 'Il più scuro e rosso.' },
+      fields: { red: 'Filtro caldo', bright: 'Luminosità', temp: 'Colore' },
+      fasce: { morning: 'Mattina', afternoon: 'Pomeriggio', evening: 'Sera', film: 'Film', night: 'Notte' },
+      presets: { movie: 'Serata film', early: 'A letto presto', late: 'Nottambulo' },
+      audioTitle: 'Audio', audioSetting: 'Controlli audio', audioSettingSub: 'Equalizzatore, bassi ed effetti sonori del dispositivo, se il suo audio li supporta',
+      audioOff: 'Spento', audioOn: 'Attivo', audioCustom: 'Personalizzato', audioFlat: 'Piatto', audioNo: 'Non supportato su questo dispositivo',
+      audioEffects: 'Effetti audio su questo dispositivo', audioNoText: 'L’audio di questo dispositivo non supporta gli effetti globali.', audioVolume: 'Volume', audioPause: 'Equalizzatore ed effetti si fermano mentre l’app in riproduzione usa effetti audio propri (per esempio il “volume boost” di un lettore video). Per applicarli comunque a quell’app, consentilo una volta da un computer:', audioFollow: 'Gli effetti seguono l’app in riproduzione.', audioNeedOn: 'Attiva gli effetti audio per usarli',
+      audioPresets: 'Musica', audioVideo: 'Video', vp: { dialogue: 'Dialoghi', cinema: 'Cinema', night: 'Notte', action: 'Azione', sport: 'Sport' }, audioReset: 'Azzera', audioEq: 'Equalizzatore', audioBass: 'Potenziamento bassi', audioVirt: 'Surround', audioLoud: 'Loudness', audioApply: 'Impostazioni audio' }
+  };
+  function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { return null; } }
+  // English by default; the system language when the app has it, unless the person picked one in Settings.
+  var phoneLang = (navigator.language || 'en').slice(0, 2).toLowerCase();
+  function autoLang() { return T[phoneLang] ? phoneLang : 'en'; }
+  var lang = T[store('mb_lang')] ? store('mb_lang') : autoLang();
+  var L = T[lang];
+  function fmt(s, o) { return s.replace(/\{(\w+)\}/g, function (_, k) { return o[k]; }); }
+
+  // ---- Pairing key of this app (from the URL fragment) and the device to show ----
+  var hash = location.hash.slice(1), key = (hash.match(/(?:^|&)k=([0-9a-f]+)/) || [])[1] || store('mb_key') || '';
+  var wanted = decodeURIComponent((hash.match(/(?:^|&)dev=([^&]+)/) || [])[1] || '');
+  if (key) store('mb_key', key);
+  history.replaceState({ v: 'root' }, '', location.pathname);
+
+  var devices = [], cur = store('mb_cur') || '', app = { overlay: true, accessibilityHint: false, version: '' };
+  if (wanted) { cur = wanted; store('mb_cur', cur); store('mb_welcomed', '1'); }
+  function base(id) { return id ? '/d/' + id : ''; } // id = host:port, plain path characters
+  function api(path, body, id) {
+    var dev = id === undefined ? cur : id;
+    // a TV that does not answer is searched on the network by the app, which takes a few seconds
+    var ctl = window.AbortController ? new AbortController() : null, t = ctl && setTimeout(function () { ctl.abort(); }, dev ? 15000 : 7000);
+    return fetch(base(dev) + path, {
+      method: body ? 'POST' : 'GET', signal: ctl && ctl.signal,
+      headers: body ? { 'X-Key': key, 'Content-Type': 'application/json' } : { 'X-Key': key },
+      body: body ? JSON.stringify(body) : undefined
+    }).then(function (r) {
+      clearTimeout(t);
+      var moved = r.headers.get('X-Moved-To');
+      if (moved && dev) deviceMoved(dev, moved);
+      if (!r.ok) { var e = new Error(r.status); e.status = r.status; throw e; }
+      return r.json();
+    }, function (e) { clearTimeout(t); throw e; });
+  }
+  var TYPES = ['projector', 'tv', 'tablet', 'phone', 'monitor', 'other'];
+  function devById(id) { for (var i = 0; i < devices.length; i++) if (devices[i].id === id) return devices[i]; return null; }
+  function devType(id) {
+    if (!id) return app.type === 'tablet' ? 'tablet' : 'phone';
+    var d = devById(id); return d && TYPES.indexOf(d.type) >= 0 ? d.type : 'tv';
+  }
+  function localLabel() { return app.type === 'tablet' ? L.localTablet : L.local; }
+  // The app found a paired TV at a new address (it changed after a reboot): follow it.
+  function deviceMoved(oldId, newId) {
+    if (devState[oldId]) { devState[newId] = devState[oldId]; delete devState[oldId]; }
+    if (cur === oldId) { cur = newId; store('mb_cur', newId); setTimeout(refresh, 0); loadScheduleSummary(); loadAudioSummary(); }
+    loadDevices();
+  }
+  function devName(id) {
+    if (!id) return L.thisDevice;
+    for (var i = 0; i < devices.length; i++) if (devices[i].id === id) return devices[i].name;
+    return id;
+  }
+
+  var toastT = null;
+  function toast(s) { var t = $('toast'); t.textContent = s; t.classList.remove('hidden'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.add('hidden'); }, 2600); }
+
+  // ---- Scenes (filter settings) ----
+  var MODELS = [
+    { id: 'off',     on: false, red: 0,  bright: 100, temp: 1100 },
+    { id: 'soft',    on: true,  red: 10, bright: 70,  temp: 1800, icon: 'soft' },
+    { id: 'evening', on: true,  red: 20, bright: 40,  temp: 1100, icon: 'cup' },
+    { id: 'cinema',  on: true,  red: 15, bright: 55,  temp: 1500, icon: 'film' },
+    { id: 'night',   on: true,  red: 20, bright: 10,  temp: 1100, icon: 'moon' },
+    { id: 'deep',    on: true,  red: 40, bright: 5,   temp: 1000, icon: 'deep' },
+    { id: 'custom',  on: true,  red: 20, bright: 40,  temp: 1100 }
+  ];
+  var BUILTIN = ['cinema', 'evening', 'soft', 'night', 'deep'];
+  function custom() { try { var a = JSON.parse(store('mb_scenes') || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+  function allScenes() {
+    var out = BUILTIN.map(function (id) { var m = modelById(id); return { id: id, name: L.models[id], desc: L.desc[id], red: m.red, bright: m.bright, temp: m.temp, icon: m.icon }; });
+    custom().forEach(function (c) { out.push({ id: c.id, name: c.name, desc: c.red + '% · ' + c.bright + '% · ' + c.temp + ' K', red: c.red, bright: c.bright, temp: c.temp, icon: 'spark', custom: true }); });
+    return out;
+  }
+  function modelById(id) { for (var i = 0; i < MODELS.length; i++) if (MODELS[i].id === id) return MODELS[i]; return null; }
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  // Same black-body colour as the app (DimService.java, Tanner Helland's approximation).
+  function kelvinRgb(k) {
+    var t = k / 100, r, g, b;
+    r = t <= 66 ? 255 : 329.698727446 * Math.pow(t - 60, -0.1332047592);
+    g = t <= 66 ? 99.4708025861 * Math.log(t) - 161.1195681661 : 288.1221695283 * Math.pow(t - 60, -0.0755148492);
+    b = t >= 66 ? 255 : t <= 19 ? 0 : 138.5177312231 * Math.log(t - 10) - 305.0447927307;
+    return [r, g, b].map(function (v) { return clamp(Math.round(v), 0, 255); });
+  }
+  function previewCss(v) {
+    if (v.on === false) return 'rgb(205,205,205)';
+    var tint = kelvinRgb(v.temp), tintA = v.red / 100 * 0.65, dimA = (100 - v.bright) / 100, b0 = 205;
+    return 'rgb(' + tint.map(function (x) { return ((b0 * (1 - tintA) + x * tintA) * (1 - dimA)) | 0; }).join(',') + ')';
+  }
+  function thumbCss(s) {
+    var c = kelvinRgb(s.temp), a = 0.35 + s.red / 100 * 0.6, d = (100 - s.bright) / 100 * 0.75;
+    return 'background: linear-gradient(rgba(0,0,0,' + d.toFixed(2) + '),rgba(0,0,0,' + d.toFixed(2) + ')), linear-gradient(135deg, rgba(' + c.join(',') + ',' + a.toFixed(2) + '), rgba(' + c.join(',') + ',.15)), linear-gradient(160deg, #cfd8e6, #7f93b3 45%, #26334d)';
+  }
+  function same(s, st) { return st && st.on && st.red === s.red && st.bright === s.bright && st.temp === s.temp; }
+
+  // ---- State of the shown device ----
+  var state = null, reach = 'checking', pending = null;
+  function setRange(id, v) { var r = $(id); r.value = v; paintRange(r); }
+  function paintRange(r) { r.style.setProperty('--p', ((r.value - r.min) / (r.max - r.min) * 100) + '%'); }
+  function labels() { $('v-red').textContent = $('r-red').value + '%'; $('v-bright').textContent = $('r-bright').value + '%'; $('v-temp').textContent = $('r-temp').value + 'K'; }
+  function preview() {
+    var on = state && state.on, c = kelvinRgb(+$('r-temp').value);
+    $('pv-tint').style.background = on ? 'rgba(' + c.join(',') + ',' + (+$('r-red').value / 100 * 0.65 + 0.12).toFixed(2) + ')' : 'transparent';
+    $('pv-tint').style.mixBlendMode = 'multiply';
+    $('pv-dim').style.background = on ? 'rgba(0,0,0,' + ((100 - $('r-bright').value) / 100 * 0.9).toFixed(2) + ')' : 'transparent';
+  }
+  function renderDevice() {
+    $('h-dev-ic').innerHTML = icon(devType(cur));
+    $('h-dev-name').textContent = devName(cur);
+    var st = $('h-dev-status');
+    if (!cur) st.innerHTML = '<span class="muted">' + localLabel() + (state ? ' · ' + (state.on ? L.filterOn : L.filterOff) : '') + '</span>';
+    else if (reach === 'ok') st.innerHTML = '<span class="dot on"></span><span class="status-on">' + L.connected + '</span><span class="muted"> · ' + (state && state.on ? L.filterOn : L.filterOff) + '</span>';
+    else if (reach === 'key') st.innerHTML = '<span class="dot"></span><span class="muted">' + L.keyChanged + '</span>';
+    else if (reach === 'down') st.innerHTML = '<span class="dot"></span><span class="muted">' + L.offline + '</span>';
+    else st.innerHTML = '<span class="muted">' + L.checking + '</span>';
+    if (syncOn() && devices.length) st.innerHTML += '<span class="muted"> · ' + L.syncOn + '</span>';
+    $('h-power').classList.toggle('on', !!(state && state.on && reach === 'ok'));
+    $('h-power').setAttribute('aria-pressed', String(!!(state && state.on)));
+    $('perm-banner').classList.toggle('hidden', !!cur || app.overlay);
+  }
+  function show(s) {
+    state = s; reach = 'ok';
+    // this phone could not draw the filter: the permission was revoked or never given
+    if (!cur && s.blocked && app.overlay !== false) { app.overlay = false; loadApp(); }
+    if (typeof s.minute === 'number') {
+      var n = new Date(), off = s.minute - (n.getHours() * 60 + n.getMinutes() + n.getSeconds() / 60);
+      if (off > 720) off -= 1440; if (off < -720) off += 1440;
+      try { rhythm.clockOffset = Math.round(off * 10) / 10; } catch (e) {}
+    }
+    if (!pending) { setRange('r-red', s.red); setRange('r-bright', s.bright); setRange('r-temp', s.temp); labels(); }
+    renderDevice(); renderSceneRow(); preview(); if (view === 'scenes') renderScenes();
+  }
+  function fail(e) {
+    reach = e && e.status === 403 ? 'key' : 'down';
+    renderDevice();
+  }
+  function refresh() { var id = cur; return api('/api/state').then(function (s) { if (id === cur) show(s); }, function (e) { if (id === cur) fail(e); }); }
+  function setValues(v) {
+    broadcast('/api/set', v);
+    return api('/api/set', v).then(show, function (e) { fail(e); toast(e && e.status === 403 ? L.keyChanged : L.unreachable); });
+  }
+
+  ['r-red', 'r-bright', 'r-temp'].forEach(function (id) {
+    $(id).addEventListener('input', function () {
+      if (guard()) { if (state) { setRange('r-red', state.red); setRange('r-bright', state.bright); setRange('r-temp', state.temp); labels(); } return; }
+      paintRange($(id)); labels();
+      if (state) state.on = true;
+      preview(); renderSceneRow();
+      clearTimeout(pending);
+      pending = setTimeout(function () {
+        pending = null;
+        setValues({ on: true, red: +$('r-red').value, bright: +$('r-bright').value, temp: +$('r-temp').value });
+      }, 120);
+    });
+  });
+  $('h-power').addEventListener('click', function () { if (!guard()) setValues({ on: !(state && state.on) }); });
+  $('h-dev').addEventListener('click', function () { go('devices'); });
+
+  function sceneButton(s) {
+    var b = el('button', 'scene', '<span class="ring">' + icon(s.icon) + '</span><span>' + esc(s.name) + '</span>');
+    b.type = 'button';
+    b.setAttribute('aria-pressed', String(!!same(s, state)));
+    b.onclick = function () { applyScene(s); };
+    return b;
+  }
+  function applyScene(s) {
+    if (guard()) return;
+    state = state || {}; state.on = true;
+    setRange('r-red', s.red); setRange('r-bright', s.bright); setRange('r-temp', s.temp); labels(); preview();
+    setValues({ on: true, red: s.red, bright: s.bright, temp: s.temp });
+  }
+  function renderSceneRow() {
+    var box = $('h-scenes'); box.innerHTML = '';
+    var live = state ? { on: state.on, red: +$('r-red').value, bright: +$('r-bright').value, temp: +$('r-temp').value } : null;
+    allScenes().forEach(function (s) { var b = sceneButton(s); b.setAttribute('aria-pressed', String(!!same(s, live))); box.appendChild(b); });
+  }
+
+  // ---- Scenes list ----
+  function renderScenes() {
+    var box = $('s-list'); box.innerHTML = '';
+    allScenes().forEach(function (s) {
+      var on = same(s, state), row = el('div', 'item' + (on ? ' active' : ''));
+      var main = el('button', '', '');
+      main.type = 'button'; main.style.cssText = 'display:flex;align-items:center;gap:14px;flex:1;min-width:0;text-align:left';
+      main.innerHTML = '<span class="thumb" style="' + thumbCss(s) + '">' + icon(s.icon) + '</span><span class="grow"><span class="t">' + esc(s.name) + '</span><br><span class="d">' + esc(s.desc) + '</span></span>';
+      main.onclick = function () { applyScene(s); };
+      row.appendChild(main);
+      if (s.custom) {
+        var del = el('button', 'icon-btn', icon('trash')); del.type = 'button'; del.setAttribute('aria-label', L.deleteScene);
+        del.onclick = function () { store('mb_scenes', JSON.stringify(custom().filter(function (c) { return c.id !== s.id; }))); renderScenes(); renderSceneRow(); };
+        row.appendChild(del);
+      }
+      row.appendChild(el('span', 'radio' + (on ? ' on' : ''), on ? icon('check') : ''));
+      box.appendChild(row);
+    });
+    var add = el('button', 'item', '<span class="thumb dashed">' + icon('plus') + '</span><span class="grow"><span class="t">' + L.custom + '</span><br><span class="d">' + L.customSub + '</span></span>');
+    add.type = 'button'; add.onclick = sceneSheet;
+    box.appendChild(add);
+  }
+  function sceneSheet() {
+    var s = openSheet('<h2>' + L.newScene + '</h2><div class="stack">' +
+      '<input class="field" id="sn-name" maxlength="24" placeholder="' + L.sceneName + '">' +
+      '<div class="card slider-card"><span class="ic ic-red">' + icon('sun') + '</span><span class="lbl">' + L.red + '</span><span class="val" id="sn-rv"></span><input id="sn-red" type="range" min="0" max="100" step="5" style="--c1:#ff3b3b;--c2:#ff7a5c"></div>' +
+      '<div class="card slider-card"><span class="ic ic-cream">' + icon('bright') + '</span><span class="lbl">' + L.bright + '</span><span class="val" id="sn-bv"></span><input id="sn-bright" type="range" min="5" max="100" step="5" style="--c1:#b9a48e;--c2:#ffe2bd"></div>' +
+      '<div class="card slider-card"><span class="ic ic-amber">' + icon('thermo') + '</span><span class="lbl">' + L.temp + '</span><span class="val" id="sn-tv"></span><input id="sn-temp" type="range" min="1000" max="4000" step="100" style="--c1:#ff7a2e;--c2:#ffc98a"></div>' +
+      '<button class="btn btn-grad" id="sn-save" type="button">' + L.save + '</button></div>');
+    var r = $('sn-red'), b = $('sn-bright'), t = $('sn-temp');
+    r.value = $('r-red').value; b.value = $('r-bright').value; t.value = $('r-temp').value;
+    function upd() { [r, b, t].forEach(paintRange); $('sn-rv').textContent = r.value + '%'; $('sn-bv').textContent = b.value + '%'; $('sn-tv').textContent = t.value + 'K'; }
+    [r, b, t].forEach(function (x) { x.addEventListener('input', upd); }); upd();
+    $('sn-save').onclick = function () {
+      var name = $('sn-name').value.trim() || L.custom;
+      var sc = { id: 'c' + Date.now(), name: name.slice(0, 24), red: +r.value, bright: +b.value, temp: +t.value };
+      var list = custom(); list.push(sc); store('mb_scenes', JSON.stringify(list));
+      closeSheet(); toast(L.sceneSaved); applyScene(sc); renderScenes();
+    };
+    return s;
+  }
+  $('s-add-top').onclick = sceneSheet;
+
+  // ---- Devices ----
+  var devState = {};
+  function loadDevices() {
+    return api('/api/devices', null, '').then(function (d) {
+      devices = Array.isArray(d) ? d : [];
+      if (cur && !devById(cur)) {
+        // not in the list any more: deleted, or found at a new address (the answer then says where)
+        var missing = cur;
+        api('/api/info', null, missing).then(function () { if (cur === missing) selectDevice(''); }, function () { if (cur === missing) selectDevice(''); });
+      }
+      renderDevice(); if (view === 'devices') renderDevices();
+      devices.forEach(function (x) { if (x.name === x.host || TYPES.indexOf(x.type) < 0 || !x.did) identify(x); });
+    }).catch(function () {});
+  }
+  window.mbDevicesChanged = loadDevices;
+  window.mbNotice = function (k) { if (L[k]) toast(L[k]); };
+  // Name and kind of a newly paired device, from its /api/info (older versions send no type: a TV).
+  var identifying = {};
+  function identify(x) {
+    if (identifying[x.id]) return;
+    identifying[x.id] = true;
+    api('/api/info', null, x.id).then(function (i) {
+      var body = { op: 'edit', id: x.id };
+      if (x.name === x.host && i && i.name) body.name = i.name;
+      if (TYPES.indexOf(x.type) < 0) body.type = i && TYPES.indexOf(i.type) >= 0 ? i.type : 'tv';
+      if (!x.did && i && /^[0-9a-f]{1,32}$/.test(i.id || '')) body.did = i.id; // its network id (mDNS), to follow it
+      return api('/api/devices', body, '').then(loadDevices);
+    }).catch(function () { identifying[x.id] = false; });
+  }
+  function probe(id) {
+    return api('/api/state', null, id).then(function (s) { devState[id] = { ok: true, s: s }; }, function (e) { devState[id] = { ok: false, key: e && e.status === 403 }; })
+      .then(function () { if (view === 'devices') renderDevices(); });
+  }
+  function renderDevices() {
+    var box = $('d-list'); box.innerHTML = '';
+    var sc = el('div', 'card sync-card', '<span class="ic-red">' + icon('sync') + '</span><span class="grow" style="flex:1;min-width:0"><span class="t" style="font-weight:600">' + L.sync + '</span><br><span class="small muted">' + fmt(L.syncSub, { n: devices.length }) + '</span></span><label class="switch"><input id="sync-on" type="checkbox"' + (syncOn() ? ' checked' : '') + '><span></span></label>');
+    box.appendChild(sc);
+    $('sync-on').setAttribute('aria-label', L.sync);
+    $('sync-on').onchange = function () { setSync($('sync-on').checked); };
+    [{ id: '', name: L.thisDevice, sub: localLabel() }].concat(devices.map(function (d) { return { id: d.id, name: d.name, sub: d.host }; })).forEach(function (d) {
+      var ds = devState[d.id], on = ds && ds.ok && ds.s.on, row = el('div', 'item' + (d.id === cur ? ' active' : ''));
+      var status = !d.id ? '<span class="muted">' + (ds && ds.ok ? (on ? L.filterOn : L.filterOff) : '') + '</span>'
+        : !ds ? '<span class="muted">' + L.checking + '</span>' : ds.ok
+        ? '<span class="dot on"></span><span class="status-on">' + L.connected + '</span>'
+        : '<span class="dot"></span><span class="muted">' + (ds.key ? L.keyChanged : L.offline) + '</span>';
+      var main = el('button', '', '<span class="dev-ic">' + icon(devType(d.id)) + '</span><span class="grow"><span class="t">' + esc(d.name) + '</span><br><span class="small">' + status + '</span><br><span class="d">' + esc(d.sub) + '</span></span>');
+      main.type = 'button'; main.style.cssText = 'display:flex;align-items:center;gap:12px;flex:1;min-width:0;text-align:left';
+      main.onclick = function () { selectDevice(d.id); go('home'); if (needsSetup()) setTimeout(permissionPopup, 60); };
+      row.appendChild(main);
+      var ed = el('button', 'icon-btn', icon('more')); ed.type = 'button'; ed.setAttribute('aria-label', L.options);
+      ed.onclick = function () { deviceSheet(d); };
+      row.appendChild(ed);
+      var p = el('button', 'power' + (on ? ' on' : ''), icon('power')); p.type = 'button'; p.setAttribute('aria-label', L.power);
+      p.disabled = !(ds && ds.ok);
+      p.onclick = function () {
+        if (!d.id && needsSetup()) { permissionPopup(); return; }
+        api('/api/set', { on: !on }, d.id).then(function (s) { devState[d.id] = { ok: true, s: s }; if (d.id === cur) show(s); renderDevices(); }, function () { toast(L.unreachable); });
+      };
+      row.appendChild(p);
+      box.appendChild(row);
+    });
+    var add = el('button', 'item', '<span class="add-ic">' + icon('plus') + '</span><span class="grow"><span class="t">' + L.addDevice + '</span><br><span class="d">' + L.addSub + '</span></span><span class="chev">' + icon('chev') + '</span>');
+    add.type = 'button'; add.onclick = addSheet;
+    box.appendChild(add);
+  }
+  function probeAll() { probe(''); devices.forEach(function (d) { probe(d.id); }); }
+  function selectDevice(id) {
+    if (id === cur) return;
+    cur = id; store('mb_cur', id); state = null; reach = 'checking';
+    renderDevice(); refresh(); scheduleLoaded = false;
+    au = null; auState = 'loading'; renderAudioRow();
+    if (view === 'audio') { $('au-dev').textContent = devName(cur); loadAudio(); } else loadAudioSummary();
+    if (view === 'schedule') loadScheduleAll();
+    else loadScheduleSummary();
+  }
+  // Address as shown on the TV (IP, IP:port or the whole QR link) plus the code; the code may also be inside the link.
+  function pairingLink(addr, code) {
+    addr = addr.trim(); code = code.replace(/[^0-9a-fA-F]/g, '').toLowerCase();
+    if (!addr) return null;
+    if (/^raylauncher:/i.test(addr)) return addr;
+    if (!/^https?:\/\//i.test(addr)) addr = 'http://' + addr;
+    var hasKey = /[#?&]k=[0-9a-f]+/i.test(addr);
+    if (!hasKey && !code) { toast(L.needCode); return null; }
+    var m = addr.match(/^https?:\/\/([^\/:#?]+)(?::(\d+))?/i);
+    if (!m) { toast(L.badLink); return null; }
+    if (hasKey) return addr;
+    return 'http://' + m[1] + ':' + (m[2] || '8766') + '/#k=' + code;
+  }
+  function addSheet() {
+    openSheet('<h2>' + L.addDevice + '</h2><div class="stack">' +
+      '<div class="small muted">' + L.foundTitle + '</div><div class="list" id="ad-found"><p class="small muted" style="margin:0">' + L.searching + '</p></div>' +
+      '<a class="btn btn-grad" href="raylauncher-app://scan" id="ad-scan">' + icon('qr') + L.scanQr + '</a><ol class="steps">' + L.addSteps.map(function (s) { return '<li>' + s + '</li>'; }).join('') + '</ol>' +
+      '<div class="small muted">' + L.manual + '</div>' +
+      '<label class="small muted" for="ad-link">' + L.address + '</label><input class="field" id="ad-link" inputmode="url" autocomplete="off" autocapitalize="off" placeholder="TV_IP:8766">' +
+      '<label class="small muted" for="ad-code">' + L.code + '</label><input class="field" id="ad-code" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="a1b2 c3d4 e5f6 …">' +
+      '<button class="btn btn-soft" type="button" id="ad-go">' + icon('link') + L.add + '</button></div>');
+    listFound(0);
+    $('ad-go').onclick = function () {
+      var link = pairingLink($('ad-link').value, $('ad-code').value);
+      if (!link) return;
+      api('/api/devices', { op: 'add', link: link }, '').then(function (r) {
+        closeSheet(); toast(L.added);
+        return loadDevices().then(function () { selectDevice(r.id); probeAll(); });
+      }, function () { toast(L.badLink); });
+    };
+  }
+  // ---- Copy one device's settings to others ("Apply to…") ----
+  function allDevices() { return [{ id: '', name: L.thisDevice }].concat(devices.map(function (d) { return { id: d.id, name: d.name }; })); }
+  function checkRow(label, iconName, checked) {
+    var b = el('button', 'check-row', '<span class="box">' + icon('check') + '</span>' + (iconName ? '<span class="dev-ic">' + icon(iconName) + '</span>' : '') + '<span class="grow">' + esc(label) + '</span>');
+    b.type = 'button'; b.setAttribute('role', 'checkbox'); b.setAttribute('aria-checked', String(checked));
+    b.onclick = function () { b.setAttribute('aria-checked', String(b.getAttribute('aria-checked') !== 'true')); if (b.onchecked) b.onchecked(); };
+    return b;
+  }
+  function applySheet(src) {
+    var others = allDevices().filter(function (x) { return x.id !== src.id; });
+    var name = src.id ? src.name : L.thisDevice;
+    if (!devices.length && !src.id) { toast(L.noOthers); return; }
+    openSheet('<h2>' + esc(fmt(L.applyTitle, { name: name })) + '</h2><div class="stack"><div class="list" id="ap-devs"></div>' +
+      '<div class="small muted">' + L.applyWhat + '</div><div class="list" id="ap-what"></div>' +
+      '<button class="btn btn-grad" type="button" id="ap-go"></button></div>');
+    var rows = others.map(function (o) { var r = checkRow(o.name, devType(o.id), !!o.id); r.dataset.id = o.id; $('ap-devs').appendChild(r); return r; });
+    var wf = checkRow(L.applyFilter, null, true), ws = checkRow(L.applySched, null, true), wa = checkRow(L.audioApply, null, audioOn());
+    $('ap-what').appendChild(wf); $('ap-what').appendChild(ws); $('ap-what').appendChild(wa);
+    function label() {
+      var n = rows.filter(function (r) { return r.getAttribute('aria-checked') === 'true'; }).length;
+      $('ap-go').textContent = n === 1 ? L.applyGo1 : fmt(L.applyGo, { n: n });
+    }
+    rows.forEach(function (r) { r.onchecked = label; }); label();
+    $('ap-go').onclick = function () {
+      var targets = rows.filter(function (r) { return r.getAttribute('aria-checked') === 'true'; }).map(function (r) { return r.dataset.id; });
+      if (!targets.length) { toast(L.applyNone); return; }
+      $('ap-go').disabled = true; $('ap-go').textContent = L.applying;
+      copyTo(src.id, targets, wf.getAttribute('aria-checked') === 'true', ws.getAttribute('aria-checked') === 'true', wa.getAttribute('aria-checked') === 'true').then(function (r) {
+        closeSheet(); reportCopy(r, targets.length);
+      });
+    };
+  }
+  function reportCopy(r, total) {
+    var msg = fmt(L.applied, { n: r.ok.length, t: total });
+    if (r.failed.length) msg += ' · ' + fmt(L.appliedFail, { names: r.failed.map(devName).join(', ') });
+    toast(msg);
+    if (r.ok.indexOf(cur) >= 0) { refresh(); loadScheduleSummary(); }
+    if (view === 'devices') probeAll();
+  }
+  // Reads the source device and writes the same values, schedule and saved days to every target.
+  function copyTo(srcId, targets, withFilter, withSched, withAudio) {
+    return Promise.all([
+      withFilter ? api('/api/state', null, srcId) : null,
+      withSched ? api('/api/schedule', null, srcId) : null,
+      withSched ? api('/api/days', null, srcId).catch(function () { return []; }) : null,
+      withAudio ? api('/api/audio', null, srcId).catch(function () { return null; }) : null
+    ]).then(function (src) {
+      var st = src[0], sc = src[1], days = src[2] || [], ab = audioBody(src[3]);
+      return Promise.all(targets.map(function (t) {
+        var jobs = [];
+        if (st) jobs.push(api('/api/set', { on: st.on, red: st.red, bright: st.bright, temp: st.temp }, t));
+        if (sc) {
+          jobs.push(api('/api/schedule', { enabled: !!sc.enabled, value: sc.value, resolved: sc.resolved, transition: typeof sc.transition === 'number' ? sc.transition : 30 }, t));
+          days.forEach(function (d) { jobs.push(api('/api/days', { name: d.name, slots: d.slots }, t)); });
+        }
+        if (ab) jobs.push(api('/api/audio', ab, t).catch(function () {})); // a target without audio support is not a failure
+        return Promise.all(jobs).then(function () { return { id: t, ok: true }; }, function () { return { id: t, ok: false }; });
+      }));
+    }, function () { return targets.map(function (t) { return { id: t, ok: false }; }); }).then(function (res) {
+      return { ok: res.filter(function (x) { return x.ok; }).map(function (x) { return x.id; }), failed: res.filter(function (x) { return !x.ok; }).map(function (x) { return x.id; }) };
+    });
+  }
+
+  // ---- Sync: every change goes to all saved TVs (this phone excluded) ----
+  function syncOn() { return store('mb_sync') === '1'; }
+  function syncTargets() { return devices.map(function (d) { return d.id; }).filter(function (id) { return id !== cur; }); }
+  function setSync(on) {
+    store('mb_sync', on ? '1' : null);
+    renderDevice();
+    if (!on) return;
+    var targets = syncTargets();
+    if (!targets.length) return;
+    copyTo(cur, targets, true, true, audioOn()).then(function (r) {
+      toast(fmt(L.syncDone, { name: devName(cur) }) + (r.failed.length ? ' · ' + fmt(L.appliedFail, { names: r.failed.map(devName).join(', ') }) : ''));
+      if (view === 'devices') probeAll();
+    });
+  }
+  function broadcast(path, body) {
+    if (!syncOn()) return;
+    syncTargets().forEach(function (t) { api(path, body, t).catch(function () {}); });
+  }
+
+  // TVs announced on the network (mDNS) and not saved yet: tap one, then type its code.
+  function listFound(round) {
+    var box = $('ad-found');
+    if (!box) return;
+    api('/api/discovered', null, '').then(function (list) {
+      if (!$('ad-found')) return;
+      if (list.length) {
+        box.innerHTML = '';
+        list.forEach(function (d) {
+          var b = el('button', 'item', '<span class="dev-ic">' + icon(TYPES.indexOf(d.type) >= 0 ? d.type : 'tv') + '</span><span class="grow"><span class="t">' + esc(d.name || d.host) + '</span><br><span class="d">' + esc(d.host) + '</span></span><span class="chev">' + icon('chev') + '</span>');
+          b.type = 'button';
+          b.onclick = function () { $('ad-link').value = d.host + ':' + d.port; $('ad-code').focus(); toast(L.foundHint); };
+          box.appendChild(b);
+        });
+      } else if (round >= 3) box.innerHTML = '<p class="small muted" style="margin:0">' + L.noneFound + '</p>';
+      if (round < 20) setTimeout(function () { listFound(round + 1); }, 1500); // results keep arriving for a while
+    }).catch(function () {});
+  }
+  function deviceSheet(d) {
+    if (!d.id) { // this phone: nothing to rename or remove
+      openSheet('<h2>' + esc(d.name) + '</h2><div class="stack"><button class="btn btn-grad" type="button" id="dv-apply">' + icon('copy') + L.applyTo + '</button></div>');
+      $('dv-apply').onclick = function () { applySheet(d); };
+      return;
+    }
+    var type = devType(d.id);
+    openSheet('<h2>' + esc(d.name) + '</h2><div class="stack"><button class="btn btn-soft" type="button" id="dv-apply">' + icon('copy') + L.applyTo + '</button><label class="small muted" for="dv-name">' + L.rename + '</label><input class="field" id="dv-name" maxlength="40">' +
+      '<div class="small muted">' + L.type + '</div><div class="types" id="dv-types">' + TYPES.map(function (t) {
+        return '<button type="button" class="type-opt" data-type="' + t + '" aria-pressed="' + (t === type) + '">' + icon(t) + '<span>' + L.types[t] + '</span></button>';
+      }).join('') + '</div>' +
+      '<button class="btn btn-grad" type="button" id="dv-save">' + L.save + '</button><button class="btn btn-danger" type="button" id="dv-del">' + icon('trash') + L.remove + '</button></div>');
+    $('dv-name').value = d.name;
+    $('dv-apply').onclick = function () { applySheet(d); };
+    Array.prototype.forEach.call($('dv-types').children, function (b) {
+      b.onclick = function () {
+        type = b.getAttribute('data-type');
+        Array.prototype.forEach.call($('dv-types').children, function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+      };
+    });
+    $('dv-save').onclick = function () {
+      var body = { op: 'edit', id: d.id, type: type }, n = $('dv-name').value.trim();
+      if (n) body.name = n;
+      api('/api/devices', body, '').then(function () { closeSheet(); loadDevices(); }).catch(function () {});
+    };
+    var armed = false;
+    $('dv-del').onclick = function () {
+      if (!armed) { armed = true; $('dv-del').lastChild.textContent = L.removeAgain; return; }
+      api('/api/devices', { op: 'delete', id: d.id }, '').then(function () { closeSheet(); toast(L.removed); if (d.id === cur) selectDevice(''); loadDevices(); }).catch(function () {});
+    };
+  }
+  $('d-add-top').onclick = addSheet;
+
+  // ---- Bottom sheet (Android back closes it: it has its own history entry) ----
+  var sheetOpen = false;
+  function openSheet(html) {
+    $('sheet').innerHTML = '<div class="grab"></div>' + html;
+    $('sheet-wrap').classList.remove('hidden');
+    if (!sheetOpen) { sheetOpen = true; history.pushState({ v: 'sheet' }, ''); }
+    // focus the first text field, except in Add device where scanning comes first (no keyboard over the button)
+    var f = $('sheet').querySelector('input'); if (f && f.type !== 'range' && !$('ad-scan')) setTimeout(function () { f.focus(); }, 150);
+  }
+  function closeSheet() { if (sheetOpen) history.back(); }
+  function hideSheet() { sheetOpen = false; $('sheet-wrap').classList.add('hidden'); $('sheet').innerHTML = ''; }
+  $('sheet-wrap').addEventListener('click', function (e) { if (e.target === $('sheet-wrap')) closeSheet(); });
+
+  // ---- Navigation ----
+  var view = 'home', VIEWS = ['welcome', 'setup', 'home', 'devices', 'scenes', 'settings', 'schedule', 'audio'], SUBS = ['schedule', 'setup', 'audio'];
+  function showView(v) {
+    view = v;
+    VIEWS.forEach(function (x) { $('v-' + x).classList.toggle('hidden', x !== v); });
+    $('tabs').classList.toggle('hidden', v === 'welcome');
+    Array.prototype.forEach.call(document.querySelectorAll('#tabs button'), function (b) {
+      if (b.getAttribute('data-tab') === v) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+    });
+    window.scrollTo(0, 0);
+    if (v === 'devices') { renderDevices(); probeAll(); }
+    if (v === 'scenes') renderScenes();
+    if (v === 'settings') renderSettings();
+    if (v === 'schedule') { $('sc-dev').textContent = devName(cur); loadScheduleAll(); }
+    if (v === 'setup') renderSetup();
+    if (v === 'audio') { $('au-dev').textContent = devName(cur); loadAudio(); }
+    if (v === 'home') loadAudioSummary();
+  }
+  function go(v) {
+    if (SUBS.indexOf(v) >= 0) {
+      if (SUBS.indexOf(view) >= 0) history.replaceState({ v: v }, ''); else history.pushState({ v: v }, '');
+      showView(v); return;
+    }
+    if (SUBS.indexOf(view) >= 0) { history.back(); setTimeout(function () { showView(v); }, 0); return; }
+    showView(v);
+  }
+  window.addEventListener('popstate', function () {
+    if (sheetOpen) { hideSheet(); return; }
+    if (SUBS.indexOf(view) >= 0) { showView('home'); refresh(); loadScheduleSummary(); }
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('#tabs button'), function (b) { b.onclick = function () { go(b.getAttribute('data-tab')); }; });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-go]'), function (b) { b.onclick = function () { go(b.getAttribute('data-go')); }; });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-sub]'), function (b) { b.onclick = function (e) { e.preventDefault(); go(b.getAttribute('data-sub')); }; });
+  $('sc-back').onclick = function () { history.back(); };
+  $('au-back').onclick = function () { history.back(); };
+  $('w-here').onclick = function () { store('mb_welcomed', '1'); selectDevice(''); showView('home'); if (needsSetup()) go('setup'); };
+  $('w-connect').onclick = function () { store('mb_welcomed', '1'); showView('devices'); addSheet(); };
+  $('st-welcome').onclick = function () { showView('welcome'); };
+
+  // ---- Setup of this device (the filter does nothing without the overlay permission) ----
+  var appLoaded = false;
+  function needsSetup() { return appLoaded && !cur && !app.overlay; }
+  function renderSetup() {
+    var ok = !!app.overlay, a11yNeeded = (app.sdk || 0) >= 31;
+    $('su-n1').className = 'step-n' + (ok ? ' done' : ''); $('su-n1').innerHTML = ok ? icon('check') : '1';
+    $('su-t1').textContent = ok ? L.done : L.stOverlayText;
+    $('su-b1').classList.toggle('hidden', ok);
+    $('su-s2').classList.toggle('hidden', !a11yNeeded);
+    var a = !!app.accessibility;
+    $('su-n2').className = 'step-n' + (a ? ' done' : ''); $('su-n2').innerHTML = a ? icon('check') : '2';
+    $('su-t2').textContent = a ? L.stA11yOn : L.stA11yText;
+    $('su-b2').classList.toggle('hidden', a);
+    $('su-done').disabled = !ok;
+    $('su-hint').textContent = ok ? '' : L.setupNeed;
+  }
+  $('su-back').onclick = function () { history.back(); };
+  $('su-done').onclick = function () { if (app.overlay) { history.back(); setTimeout(function () { refresh(); }, 50); } };
+  $('su-tv').onclick = function () { go('devices'); setTimeout(addSheet, 50); };
+  // Popup on start when this phone is shown and cannot draw the filter (or, once, when full darkness needs Accessibility)
+  function permissionPopup() {
+    if (cur || sheetOpen) return;
+    if (!app.overlay) {
+      openSheet('<h2>' + L.popTitle + '</h2><div class="stack"><p class="muted" style="margin:0">' + L.popText + '</p>' +
+        '<button class="btn btn-grad" type="button" id="pp-go">' + L.setupNow + '</button><button class="btn btn-soft" type="button" id="pp-later">' + L.later + '</button></div>');
+      $('pp-go').onclick = function () { closeSheet(); setTimeout(function () { go('setup'); }, 60); };
+      $('pp-later').onclick = closeSheet;
+    } else if (app.sdk >= 31 && !app.accessibility && !store('mb_a11y_tip')) {
+      store('mb_a11y_tip', '1');
+      openSheet('<h2>' + L.popA11yTitle + '</h2><div class="stack"><p class="muted" style="margin:0">' + L.popA11yText + '</p>' +
+        '<a class="btn btn-grad" href="raylauncher-app://accessibility" id="pp-a11y">' + L.enable + '</a><button class="btn btn-soft" type="button" id="pp-later">' + L.later + '</button></div>');
+      $('pp-a11y').addEventListener('click', function () { setTimeout(closeSheet, 300); });
+      $('pp-later').onclick = closeSheet;
+    }
+  }
+  // a change on this phone without the permission would do nothing: send the person to the setup instead
+  function guard() { if (needsSetup()) { permissionPopup(); return true; } return false; }
+
+  // ---- Settings ----
+  function renderSettings() {
+    $('st-setup').textContent = !app.overlay ? L.setupMissing : (app.sdk >= 31 && !app.accessibility) ? L.setupA11y : L.setupOk;
+    $('st-audio').checked = audioOn();
+    $('st-version').textContent = app.version ? fmt(L.version, { v: app.version }) : '';
+    var picked = T[store('mb_lang')] ? store('mb_lang') : 'auto';
+    Array.prototype.forEach.call(document.querySelectorAll('.lang'), function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-lang') === picked)); });
+  }
+  function loadApp() {
+    return api('/api/app', null, '').then(function (a) {
+      var first = !appLoaded; app = a; appLoaded = true;
+      renderDevice();
+      if (view === 'settings') renderSettings();
+      if (view === 'setup') renderSetup();
+      if (first && view === 'home') permissionPopup();
+    }).catch(function () {});
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.lang'), function (b) {
+    b.onclick = function () {
+      var v = b.getAttribute('data-lang');
+      store('mb_lang', v === 'auto' ? null : v);
+      lang = v === 'auto' ? autoLang() : v; L = T[lang]; applyTexts();
+    };
+  });
+
+  // ---- Schedule (<day-rhythm>, same data as the browser remote) ----
+  var core = DR.core, rhythm = $('rhythm');
+  var FASCE = [{ key: 'morning', time: '07:00' }, { key: 'afternoon', time: '14:00' }, { key: 'evening', time: '19:30' }, { key: 'film', time: '21:00' }, { key: 'night', time: '23:00' }];
+  var PRESETS = [
+    { id: 'movie', icon: '🎬', slots: [['07:00', 'off', 'morning'], ['14:00', 'off', 'afternoon'], ['19:30', 'evening', 'evening'], ['21:00', 'cinema', 'film'], ['23:30', 'night', 'night']] },
+    { id: 'early', icon: '😴', slots: [['07:00', 'off', 'morning'], ['16:00', 'soft', 'afternoon'], ['19:00', 'evening', 'evening'], ['21:00', 'night', 'film'], ['22:30', 'deep', 'night']] },
+    { id: 'late',  icon: '🦉', slots: [['08:30', 'off', 'morning'], ['15:00', 'off', 'afternoon'], ['20:30', 'soft', 'evening'], ['22:00', 'cinema', 'film'], ['01:00', 'night', 'night']] }
+  ];
+  function valuesOf(mo) { return { on: mo.on, red: mo.red, bright: mo.bright, temp: mo.temp }; }
+  function slot(time, modelId, label) { return { time: time, model: modelId, label: label, values: valuesOf(modelById(modelId)) }; }
+  function defaultValue() { return FASCE.map(function (f) { return slot(f.time, f.key === 'evening' ? 'evening' : f.key === 'film' ? 'cinema' : f.key === 'night' ? 'night' : 'off', L.fasce[f.key]); }); }
+  function fromFlat(s) {
+    if (s.values || !('red' in s)) return s;
+    var mo = modelById(s.model), id = mo ? mo.id : (s.on === false ? 'off' : 'custom');
+    var o = { time: s.time, model: id, values: { on: s.on !== false, red: s.red, bright: s.bright, temp: s.temp } };
+    if (s.label) o.label = s.label;
+    return o;
+  }
+  function normSlots(list) { return (list || []).map(fromFlat); }
+  function normValue(v) {
+    if (Array.isArray(v)) return normSlots(v);
+    if (v && v.week) { var w = {}; Object.keys(v.week).forEach(function (d) { var x = v.week[d]; w[d] = Array.isArray(x) ? normSlots(x) : x; }); return { week: w }; }
+    return null;
+  }
+  function iconUri(mo) {
+    var fill = mo.id === 'off' ? '#2a201c' : mo.id === 'custom' ? 'url(#g)' : previewCss(mo);
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 24"><defs><linearGradient id="g"><stop offset="0" stop-color="#ff6b4d"/><stop offset=".55" stop-color="#6e2a24"/><stop offset="1" stop-color="#0a0807"/></linearGradient></defs>' +
+      '<rect x="2" y="2" width="28" height="17" rx="3" fill="' + fill + '" stroke="#f2e9e3" stroke-width="2"/>' +
+      (mo.id === 'off' ? '<path d="M4 17L28 4M4 11L20 3M12 19L29 10" stroke="#a8978c" stroke-width="1.5"/>' : '') +
+      '<rect x="11" y="21" width="10" height="2" rx="1" fill="#f2e9e3"/></svg>';
+    return { src: 'data:image/svg+xml,' + encodeURIComponent(svg) };
+  }
+  var weekly = false, transition = 30, enabled = false, schedule = null, scheduleLoaded = false;
+  function config() {
+    return {
+      theme: 'organic', colorScheme: 'dark', locale: lang, credits: 'minimal', week: weekly ? 'top' : 'off',
+      maxSlots: 12, minGap: 5, snap: 5, timeFormat: '24h', editor: 'full',
+      messages: (function () {
+        var o = {}; MODELS.forEach(function (mo) { o['model.' + mo.id] = L.models[mo.id]; });
+        Object.keys(L.fields).forEach(function (k) { o['field.' + k] = L.fields[k]; });
+        return o;
+      })(),
+      models: MODELS.map(function (mo) {
+        var o = { id: mo.id, label: L.models[mo.id], icon: iconUri(mo), defaults: valuesOf(mo) };
+        if (mo.id === 'off') o.off = true;
+        else { o.preview = function (v) { return previewCss(v && v.temp != null ? v : mo); }; o.summary = '{bright}% · {temp} K'; }
+        if (mo.id === 'custom') o.fields = [
+          { key: 'red', type: 'range', label: L.fields.red, min: 0, max: 100, step: 5, unit: '%', default: 20, accent: '#ff4d4d' },
+          { key: 'bright', type: 'range', label: L.fields.bright, min: 5, max: 100, step: 5, unit: '%', default: 40, accent: '#ff6b4d' },
+          { key: 'temp', type: 'range', label: L.fields.temp, min: 1000, max: 4000, step: 100, format: '{value} K', default: 1100, accent: '#ffd9b3' }
+        ];
+        return o;
+      }),
+      presets: PRESETS.map(function (p) {
+        return { id: p.id, label: L.presets[p.id], icon: p.icon, slots: function () { return p.slots.map(function (s) { return slot(s[0], s[1], L.fasce[s[2]]); }); } };
+      })
+    };
+  }
+  function setWeekly(w) {
+    weekly = w;
+    $('wk-daily').setAttribute('aria-pressed', String(!w));
+    $('wk-week').setAttribute('aria-pressed', String(w));
+  }
+  function stripIds(slots) { return slots.map(function (s) { var c = JSON.parse(JSON.stringify(s)); delete c.id; return c; }); }
+  function setValue(v) { var isW = core.isWeek(v); setWeekly(isW); rhythm.week = isW ? 'top' : 'off'; rhythm.value = v; }
+  function toWeekly(on) {
+    if (on === weekly) return;
+    var v;
+    if (on) { var day = stripIds(rhythm.getValue()), w = {}; core.WEEKDAYS.forEach(function (d) { w[d] = JSON.parse(JSON.stringify(day)); }); v = { week: w }; }
+    else v = stripIds(rhythm.getDay());
+    setValue(v); scheduleSave();
+  }
+  $('wk-daily').onclick = function () { toWeekly(false); };
+  $('wk-week').onclick = function () { toWeekly(true); };
+  var status = $('save-status'), saveTimer = null, saving = 0, saveDev = null;
+  function payload() {
+    var v = rhythm.getValue();
+    return { enabled: enabled, value: v, resolved: core.isWeek(v) ? core.resolveWeek(v, rhythm.days) : v, transition: transition };
+  }
+  function scheduleSave() { clearTimeout(saveTimer); saveDev = cur; status.textContent = L.saving; saveTimer = setTimeout(save, 800); }
+  function save() {
+    saveTimer = null; saving++;
+    var p = payload(), id = saveDev;
+    if (id === cur) broadcast('/api/schedule', p);
+    return api('/api/schedule', p, id).then(function () {
+      if (!saveTimer) status.textContent = '✓ ' + L.saved;
+      schedule = p; summary();
+      setTimeout(refresh, 400);
+    }).catch(function () { status.textContent = '✕ ' + L.error; }).then(function () { saving--; });
+  }
+  function flushSave() { if (saveTimer) { clearTimeout(saveTimer); save(); } }
+  rhythm.addEventListener('change', scheduleSave);
+  $('sched-on').addEventListener('change', function () { enabled = $('sched-on').checked; scheduleSave(); });
+  $('transition').addEventListener('change', function () { transition = +$('transition').value; scheduleSave(); });
+  function loadDays() {
+    return api('/api/days').then(function (d) {
+      rhythm.days = (Array.isArray(d) ? d : []).map(function (x) { return { id: x.name, name: x.name, slots: normSlots(x.slots) }; });
+    }).catch(function () { rhythm.days = []; });
+  }
+  rhythm.addEventListener('daysave', function (e) {
+    broadcast('/api/days', { name: e.detail.name, slots: e.detail.slots });
+    e.detail.waitUntil(api('/api/days', { name: e.detail.name, slots: e.detail.slots }).then(loadDays));
+  });
+  rhythm.addEventListener('daydelete', function (e) {
+    broadcast('/api/days', { name: e.detail.day.name, delete: true });
+    e.detail.waitUntil(api('/api/days', { name: e.detail.day.name, delete: true }).then(loadDays));
+  });
+  rhythm.addEventListener('error', function () { status.textContent = '✕ ' + L.error; });
+  function loadScheduleSummary() {
+    var id = cur;
+    return api('/api/schedule').then(function (d) { if (id === cur) { schedule = d; summary(); } return d; }, function () { if (id === cur) { schedule = null; summary(); } return null; });
+  }
+  function loadScheduleAll() {
+    flushSave(); status.textContent = '';
+    loadScheduleSummary().then(function (d) {
+      if (!d) return;
+      var v = normValue(d.value) || normValue(d.resolved) || normValue(d.slots);
+      enabled = !!d.enabled; $('sched-on').checked = enabled;
+      transition = typeof d.transition === 'number' ? d.transition : 30;
+      $('transition').value = String(transition);
+      if (!v || (Array.isArray(v) && !v.length)) v = defaultValue();
+      rhythm.config = config(); setValue(v); scheduleLoaded = true;
+    });
+    loadDays();
+  }
+  // "On · next: Movie at 21:00" for the Home row, from the slots the device applies today.
+  function summary() {
+    var box = $('h-sched');
+    if (!schedule || !schedule.enabled) { box.textContent = L.schedOff; return; }
+    var r = schedule.resolved, now = new Date(), slots = r;
+    if (r && !Array.isArray(r)) slots = r[core.WEEKDAYS[(now.getDay() + 6) % 7]] || [];
+    var mins = now.getHours() * 60 + now.getMinutes(), next = null, first = null;
+    (slots || []).map(function (s) { var p = String(s.time).split(':'); return { m: +p[0] * 60 + +p[1], s: s }; })
+      .sort(function (a, b) { return a.m - b.m; })
+      .forEach(function (x) { if (!first) first = x; if (!next && x.m > mins) next = x; });
+    next = next || first;
+    if (!next) { box.textContent = L.schedOn; return; }
+    var name = next.s.label || (L.models[next.s.model] || '');
+    box.textContent = L.schedOn + ' · ' + fmt(L.schedNext, { name: name, time: next.s.time });
+  }
+
+  // ---- Audio (optional: global equalizer and effects of the shown device, GET/POST /api/audio) ----
+  var au = null, auState = 'loading', auSig = '', auQ = {}, auTimer = null, auPre = {};
+  try { auPre = JSON.parse(store('mb_aupre') || '{}') || {}; } catch (e) { auPre = {}; }
+  function audioOn() { return store('mb_audio') === '1'; }
+  function fmtDb(mb) { var v = Math.round(mb / 10) / 10; return (v > 0 ? '+' : '') + v.toFixed(1) + ' dB'; }
+  function fmtHz(f) { return f < 1000 ? Math.round(f) + ' Hz' : (Math.round(f / 100) / 10) + ' kHz'; }
+  function bandLevels(d) { return d && d.eq ? d.eq.bands.map(function (b) { return b.level; }) : []; }
+  function sameArr(a, b) { if (a.length !== b.length) return false; for (var i = 0; i < a.length; i++) if (a[i] !== b[i]) return false; return true; }
+  // Name of the preset the bands still match (the device does not say which one is active), or null
+  function auPresetName() {
+    var r = auPre[cur || ''];
+    return r && au && au.eq && sameArr(r.bands, bandLevels(au)) ? r.name : null;
+  }
+  function auFlat() { return !!(au && au.eq) && bandLevels(au).every(function (v) { return v === 0; }); }
+  function rememberPreset(name, d) { auPre[cur || ''] = { name: name, bands: bandLevels(d) }; store('mb_aupre', JSON.stringify(auPre)); }
+  // The fields to copy to another device, only the ones this device has
+  function audioBody(d) {
+    if (!d || !d.supported) return null;
+    var b = { enabled: !!d.enabled };
+    if (d.eq) b.bands = bandLevels(d);
+    if (d.bass) b.bass = d.bass.strength;
+    if (d.virt) b.virt = d.virt.strength;
+    if (d.loud) b.loud = d.loud.gain;
+    return b;
+  }
+  function renderAudioRow() {
+    var on = audioOn(), row = $('h-audio-row');
+    row.classList.toggle('hidden', !on);
+    if (!on) return;
+    var vol = auState === 'ok' && au.volume ? L.audioVolume + ' ' + Math.round(au.volume.level / Math.max(1, au.volume.max) * 100) + '%' : '';
+    var fx = auState !== 'ok' || !au.supported ? '' : !au.enabled ? L.audioOff
+      : L.audioOn + ' · ' + (auPresetName() || (auFlat() ? L.audioFlat : L.audioCustom));
+    var t = auState === 'loading' ? '…' : auState !== 'ok' ? L.audioNo : [vol, fx].filter(Boolean).join(' · ');
+    $('h-audio').textContent = t;
+  }
+  function auGot(d) {
+    // ok when the device has effects or at least a controllable volume
+    if (d && (d.supported || d.volume)) { au = d; auState = 'ok'; } else { au = null; auState = 'unsupported'; }
+    renderAudioRow(); if (view === 'audio') renderAudio();
+  }
+  function loadAudioSummary() {
+    if (!audioOn()) return;
+    var id = cur;
+    return api('/api/audio').then(function (d) { if (id === cur) auGot(d); }, function () { if (id === cur) auGot(null); });
+  }
+  function loadAudio() {
+    if (!au) auState = 'loading';
+    renderAudio();
+    return loadAudioSummary();
+  }
+  function auPost(body, name) {
+    var id = cur;
+    broadcast('/api/audio', body);
+    return api('/api/audio', body).then(function (d) {
+      if (id !== cur) return;
+      if (name && d && d.supported) rememberPreset(name, d);
+      auGot(d);
+    }, function (e) { if (id === cur) { toast(e && e.status === 403 ? L.keyChanged : L.unreachable); loadAudioSummary(); } });
+  }
+  function auQueue(key, val) {
+    auQ[key] = val; clearTimeout(auTimer);
+    auTimer = setTimeout(function () { var b = auQ; auQ = {}; auTimer = null; auPost(b); }, 150);
+  }
+  function auSlider(id, icn, tone, label, min, max, step, c1, c2) {
+    var card = el('div', 'card slider-card' + (icn ? '' : ' nic'),
+      (icn ? '<span class="ic ' + tone + '">' + icon(icn) + '</span>' : '') + '<label class="lbl" for="' + id + '">' + esc(label) + '</label><span class="val" id="' + id + '-v"></span>' +
+      '<input id="' + id + '" type="range" min="' + min + '" max="' + max + '" step="' + step + '" style="--c1:' + c1 + ';--c2:' + c2 + '">');
+    return card;
+  }
+  function renderAudio() {
+    var box = $('au-body'), ok = auState === 'ok';
+    $('au-main').classList.toggle('hidden', !ok || !au.supported);
+    if (!ok) {
+      auSig = ''; $('au-volbox').innerHTML = '';
+      box.innerHTML = '<div class="card muted">' + (auState === 'loading' ? L.checking : L.audioNoText) + '</div>';
+      return;
+    }
+    var eq = au.eq, sig = [lang, au.supported ? 1 : 0, au.volume ? au.volume.max : '-', eq ? eq.bands.length + ':' + eq.min + ':' + eq.max + ':' + eq.presets.join('|') : '-', au.bass ? 1 : 0, au.virt ? 1 : 0, au.loud ? 1 : 0].join(';');
+    if (sig !== auSig) { auSig = sig; buildAudio(box); }
+    updateAudio();
+  }
+  var VIDEO = [
+    { id: 'dialogue', curve: [-300, -100, 300, 500, 200], bass: 0, virt: 0, loud: 300 },
+    { id: 'cinema', curve: [500, 200, 0, 200, 300], bass: 400, virt: 500, loud: 0 },
+    { id: 'night', curve: [-400, -200, 200, 300, 0], bass: 0, virt: 0, loud: 600 },
+    { id: 'action', curve: [700, 300, -100, 300, 400], bass: 600, virt: 400, loud: 200 },
+    { id: 'sport', curve: [200, 0, 300, 400, 200], bass: 200, virt: 300, loud: 200 }
+  ];
+  var VIDEO_HZ = [60, 230, 910, 3600, 14000];
+  // Level of a video curve at each band of this device (log-frequency interpolation, clamped to its range)
+  function videoBands(v, eq) {
+    return eq.bands.map(function (b) {
+      var f = Math.log(Math.max(20, b.freq)), xs = VIDEO_HZ.map(Math.log), y;
+      if (f <= xs[0]) y = v.curve[0];
+      else if (f >= xs[xs.length - 1]) y = v.curve[xs.length - 1];
+      else for (var i = 0; i < xs.length - 1; i++) if (f <= xs[i + 1]) { y = v.curve[i] + (v.curve[i + 1] - v.curve[i]) * (f - xs[i]) / (xs[i + 1] - xs[i]); break; }
+      return Math.max(eq.min, Math.min(eq.max, Math.round(y / 50) * 50));
+    });
+  }
+  function buildAudio(box) {
+    var red = '#ff3b3b', amb = '#ffb15c';
+    box.innerHTML = ''; $('au-volbox').innerHTML = '';
+    if (au.volume) { // media volume: plain Android, independent of the effects
+      var vc = auSlider('au-vol', 'audio', 'ic-amber', L.audioVolume, 0, au.volume.max, 1, red, amb);
+      $('au-volbox').appendChild(vc);
+      vc.querySelector('input').addEventListener('input', function () {
+        au.volume.level = +this.value; updateAudio(true); auQueue('volume', +this.value);
+      });
+    }
+    if (!au.supported) { box.appendChild(el('div', 'card muted', esc(L.audioNoText))); return; }
+    box.appendChild(el('div', '', '<p class="small muted hidden" id="au-hint">' + L.audioNeedOn + '</p><p class="small muted" style="margin:0">' + (au.follow ? L.audioFollow : L.audioPause) + '</p>' +
+      (au.follow ? '' : '<p class="small muted" style="margin:6px 0 0;font-family:ui-monospace,monospace;word-break:break-all">adb shell pm grant dev.raylauncher android.permission.DUMP</p>') +
+      '<div class="stack au-ctl" id="au-ctl"></div>'));
+    var ctl = $('au-ctl'), eq = au.eq;
+    if (eq) {
+      ctl.appendChild(el('div', 'small muted', esc(L.audioPresets)));
+      var chips = el('div', 'chips'); chips.id = 'au-pre'; chips.setAttribute('role', 'group');
+      var flat = el('button', 'chip reset', esc(L.audioReset)); flat.type = 'button'; flat.id = 'au-flat';
+      flat.onclick = function () { delete auPre[cur || '']; store('mb_aupre', JSON.stringify(auPre)); auPost({ reset: true }); };
+      chips.appendChild(flat);
+      eq.presets.forEach(function (name, i) {
+        var c = el('button', 'chip', esc(name)); c.type = 'button'; c.setAttribute('data-i', i);
+        c.onclick = function () { auPost({ preset: i }, name); };
+        chips.appendChild(c);
+      });
+      ctl.appendChild(chips);
+      // Video presets: our own curves (mB at reference frequencies), mapped onto the device's bands
+      ctl.appendChild(el('div', 'small muted', esc(L.audioVideo)));
+      var vchips = el('div', 'chips'); vchips.id = 'au-vid'; vchips.setAttribute('role', 'group');
+      VIDEO.forEach(function (v) {
+        var name = L.vp[v.id], c = el('button', 'chip', esc(name)); c.type = 'button'; c.setAttribute('data-v', v.id);
+        c.onclick = function () {
+          var body = { bands: videoBands(v, eq), label: name };
+          if (au.bass) body.bass = v.bass;
+          if (au.virt) body.virt = v.virt;
+          if (au.loud) body.loud = v.loud;
+          auPost(body, name);
+        };
+        vchips.appendChild(c);
+      });
+      ctl.appendChild(vchips);
+      ctl.appendChild(el('div', 'small muted', esc(L.audioEq)));
+      eq.bands.forEach(function (b, i) {
+        var card = auSlider('au-b' + i, null, '', fmtHz(b.freq), eq.min, eq.max, 50, red, amb);
+        ctl.appendChild(card);
+        card.querySelector('input').addEventListener('input', function () {
+          var bands = eq.bands.map(function (x, j) { return +$('au-b' + j).value; });
+          bands.forEach(function (v, j) { au.eq.bands[j].level = v; });
+          updateAudio(true); auQueue('bands', bands);
+        });
+      });
+    }
+    [['bass', 'audio', 'ic-red', L.audioBass, 0, 1000, 'strength', true], ['virt', 'spark', 'ic-amber', L.audioVirt, 0, 1000, 'strength', true], ['loud', 'bright', 'ic-cream', L.audioLoud, 0, 1500, 'gain', false]].forEach(function (f) {
+      if (!au[f[0]]) return;
+      var card = auSlider('au-' + f[0], f[1], f[2], f[3], f[4], f[5], f[0] === 'loud' ? 50 : 10, red, amb);
+      ctl.appendChild(card);
+      card.querySelector('input').addEventListener('input', function () {
+        au[f[0]][f[6]] = +this.value; updateAudio(true); auQueue(f[0], +this.value);
+      });
+    });
+  }
+  // Puts the values in the controls; a slider being dragged is left alone
+  function updateAudio(local) {
+    if (au && au.volume && $('au-vol')) {
+      var vr = $('au-vol');
+      if (document.activeElement !== vr) vr.value = au.volume.level;
+      paintRange(vr); $('au-vol-v').textContent = Math.round(vr.value / Math.max(1, au.volume.max) * 100) + '%';
+    }
+    if (!$('au-ctl')) { renderAudioRow(); return; }
+    var on = !!au.enabled, eq = au.eq;
+    $('au-on').checked = on;
+    $('au-ctl').classList.toggle('off', !on); $('au-hint').classList.toggle('hidden', on);
+    function put(id, v, txt) {
+      var r = $(id); if (!r) return;
+      r.disabled = !on;
+      if (document.activeElement !== r) r.value = v;
+      paintRange(r); $(id + '-v').textContent = txt(+r.value);
+    }
+    if (eq) eq.bands.forEach(function (b, i) { put('au-b' + i, b.level, fmtDb); });
+    if (au.bass) put('au-bass', au.bass.strength, function (v) { return Math.round(v / 10) + '%'; });
+    if (au.virt) put('au-virt', au.virt.strength, function (v) { return Math.round(v / 10) + '%'; });
+    if (au.loud) put('au-loud', au.loud.gain, fmtDb);
+    if (eq) {
+      var nm = local ? null : auPresetName(), flat = !nm && auFlat();
+      Array.prototype.forEach.call($('au-vid').children, function (c) {
+        c.disabled = !on;
+        c.setAttribute('aria-pressed', String(L.vp[c.getAttribute('data-v')] === nm));
+      });
+      Array.prototype.forEach.call($('au-pre').children, function (c) {
+        var i = c.getAttribute('data-i');
+        c.disabled = !on;
+        c.setAttribute('aria-pressed', String(i === null ? flat : eq.presets[+i] === nm));
+      });
+    }
+    renderAudioRow();
+  }
+  $('au-on').addEventListener('change', function () {
+    if (!au) return;
+    au.enabled = $('au-on').checked; updateAudio();
+    auPost({ enabled: au.enabled });
+  });
+  $('st-audio').addEventListener('change', function () {
+    store('mb_audio', $('st-audio').checked ? '1' : null);
+    renderAudioRow(); loadAudioSummary();
+  });
+
+  // ---- Texts ----
+  function applyTexts() {
+    document.documentElement.lang = lang;
+    Array.prototype.forEach.call(document.querySelectorAll('[data-t]'), function (e) { var v = L[e.getAttribute('data-t')]; if (typeof v === 'string') e.textContent = v; });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-al]'), function (e) { e.setAttribute('aria-label', L[e.getAttribute('data-al')]); });
+    $('sched-on').setAttribute('aria-label', L.schedTitle);
+    $('st-audio').setAttribute('aria-label', L.audioSetting); $('au-on').setAttribute('aria-label', L.audioEffects);
+    renderDevice(); renderSceneRow(); summary(); renderAudioRow();
+    if (view === 'audio') { auSig = ''; renderAudio(); }
+    if (view === 'devices') renderDevices();
+    if (view === 'scenes') renderScenes();
+    if (view === 'settings') renderSettings();
+    if (view === 'setup') renderSetup();
+    if (scheduleLoaded) { var v = rhythm.getValue(), d = rhythm.days; rhythm.config = config(); setValue(v); rhythm.days = d; }
+  }
+
+  // ---- Start ----
+  paintIcons();
+  applyTexts(); labels();
+  ['r-red', 'r-bright', 'r-temp'].forEach(function (id) { paintRange($(id)); });
+  rhythm.config = config(); setValue(defaultValue());
+  showView(store('mb_welcomed') ? 'home' : 'welcome');
+  loadApp(); loadDevices(); refresh(); loadScheduleSummary(); loadAudioSummary();
+  setInterval(function () {
+    if (document.hidden) return;
+    if (!pending) refresh();
+    if (view === 'devices') probeAll();
+  }, 10000);
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) { flushSave(); return; }
+    // the app restarts its local server when it comes back: give it a moment
+    setTimeout(function () {
+      loadApp(); refresh(); loadDevices();
+      if (view === 'devices') probeAll();
+      if (view === 'audio') loadAudio(); else loadAudioSummary();
+      if (view === 'schedule' && !saveTimer && !saving && !rhythm.editing) loadScheduleAll(); else loadScheduleSummary();
+    }, 600);
+  });
+})();
+</script>
+</body>
+</html>

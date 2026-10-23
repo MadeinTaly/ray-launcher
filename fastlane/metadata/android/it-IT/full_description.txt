@@ -1,0 +1,23 @@
+RAY è un launcher leggero e open source per Android TV, con app companion per il telefono.
+
+<b>Launcher</b>
+* Home con le tue app installate (banner, nomi, icone), catalogo completo e, se lo permetti, le voci "Continua a guardare" delle app TV
+* <b>Skin</b>: tutto l'aspetto della home è una skin. Ne sono incluse diverse, ognuna con un aspetto giorno e uno notte che cambiano da soli ad alba e tramonto. Crea le tue: il formato è documentato e aperto
+
+<b>Telecomando sul telefono</b>
+* Abbina inquadrando il QR sulla TV, oppure dal browser: nessun account
+* Frecce, ricerca, lancio app, controlli multimediali per l'app in primo piano, sfondo e scelta della skin
+* <b>Mouse ad aria</b>: muovi un puntatore sulla TV con i movimenti del telefono (facoltativo), anche sopra le altre app
+* Trova le TV sulla rete e può copiare le impostazioni su più TV
+
+<b>Filtro schermo e programmazione</b>
+* Filtro caldo (rosso) e dimmer sopra ogni app, video compresi, con luminosità e temperatura colore
+* Programmazione giornaliera o settimanale con transizioni graduali, applicata dalla TV stessa, anche a telefono spento
+* Effetti audio (equalizzatore, bassi, virtualizzatore, loudness) sui dispositivi che li supportano
+
+<b>Privacy</b>
+* Nessun account, nessun tracker, nessuna pubblicità, nessun SDK di terze parti
+* La rete è usata solo nella tua rete locale (porta 8766, protetta da una chiave di abbinamento)
+* Meteo facoltativo nella home: spento finché non dai il consenso; poi vengono inviati solo la città e le sue coordinate a Open-Meteo (UE) o OpenWeatherMap (con la tua chiave)
+
+Android 8.0 o successivo. Ogni permesso aggiuntivo (sovrapposizione, accessibilità, accesso all'utilizzo, notifiche, Watch Next) è facoltativo e sblocca solo la sua funzione. Codice sorgente e formato delle skin: github.com/MadeinTaly/ray-launcher

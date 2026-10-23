@@ -1,0 +1,47 @@
+{
+  "format": 1,
+  "id": "essenziale",
+  "name": {"it": "Essenziale", "en": "Essential"},
+  "author": "RAY",
+  "accent": "#8fb4ff",
+  "frame": null,
+  "animated": false,
+  "wallpaper": "user",
+  "wallpaperDefault": {
+    "gradient": ["#16213F", "#2A2C58", "#5B3A62", "#B5584F"], "stops": [0, 0.38, 0.66, 1], "angle": 160,
+    "glows": [{"c": "#FF965A", "a": 0.55, "x": 0.78, "y": 0.08, "r": 0.7}, {"c": "#3C5ABE", "a": 0.55, "x": 0.12, "y": 0.95, "r": 0.7}],
+    "mountains": ["#CC2A2150", "#E61A1540"]
+  },
+  "wallpaperFx": {
+    "blurBelowY": 0.5, "blurFeather": 0.1, "scrimRgb": "080A14",
+    "scrimH": [[0, 0.62], [0.45, 0.25], [0.70, 0]],
+    "scrimV": [[0, 0.35], [0.22, 0], [0.48, 0], [1, 0.72]]
+  },
+  "style": {
+    "cardRadius": 12, "panel": "glass", "text": "#F4F6FA", "muted": "#ADF4F6FA",
+    "dim": 0.78, "focusScale": 1.08, "ringDp": 2.5, "ring": "#FFFFFF", "shadow": "#8C000000",
+    "panelFill": "#1AFFFFFF", "panelStrong": "#29FFFFFF", "ok": "#22A55B",
+    "btnBg": "#F4F6FA", "btnFg": "#10131A", "btn2Bg": "#24FFFFFF", "btn2Fg": "#F4F6FA"
+  },
+  "variants": {
+    "night": {},
+    "day": {
+      "accent": "#2f5bea",
+      "wallpaperDefault": {
+        "gradient": ["#CFE0F7", "#E3DCF0", "#F6DCD0"], "stops": [0, 0.45, 1], "angle": 160,
+        "glows": [{"c": "#FFD6AA", "a": 0.95, "x": 0.80, "y": 0.05, "r": 0.7}, {"c": "#96BEFF", "a": 0.85, "x": 0.08, "y": 1.0, "r": 0.7}],
+        "mountains": ["#66967A96", "#8CB4A0B4"]
+      },
+      "wallpaperFx": {
+        "blurBelowY": 0.5, "blurFeather": 0.1, "scrimRgb": "FFFFFF",
+        "scrimH": [[0, 0.62], [0.45, 0.30], [0.70, 0]],
+        "scrimV": [[0, 0.35], [0.22, 0], [0.48, 0], [1, 0.60]]
+      },
+      "style": {
+        "text": "#141821", "muted": "#AD141821", "dim": 0.90, "ring": "#141821", "shadow": "#52283250",
+        "panelFill": "#9EFFFFFF", "panelStrong": "#E6FFFFFF",
+        "btnBg": "#141821", "btnFg": "#FFFFFF", "btn2Bg": "#B3FFFFFF", "btn2Fg": "#141821"
+      }
+    }
+  }
+}

@@ -1,0 +1,23 @@
+RAY is a lightweight, open-source launcher for Android TV, with a companion app for your phone.
+
+<b>Launcher</b>
+* Home screen with your installed apps (banners, names, icons), a full app catalog and, if you allow it, the "Watch Next" entries of your TV apps
+* <b>Skins</b>: the whole look of the home is a skin. Several are bundled, each with a day and a night look that switch automatically at sunrise and sunset. Make your own: the skin format is documented and open
+
+<b>Phone remote</b>
+* Pair by scanning the QR code on the TV, or use the browser: no account needed
+* D-pad, search, app launcher, media controls for the app on screen, wallpaper and skin selection
+* <b>Air mouse</b>: steer a pointer on the TV with the motion of your phone (opt-in), also over other apps
+* Finds your TVs on the network and can copy settings to several of them
+
+<b>Screen filter and schedule</b>
+* Warm (red) filter and dimmer drawn above every app, video included, with brightness and colour temperature
+* Daily or weekly schedule with smooth transitions, applied by the TV itself, even with the phone off
+* Audio effects (equalizer, bass, virtualizer, loudness) on devices that support them
+
+<b>Privacy</b>
+* No accounts, no trackers, no ads, no third-party SDKs
+* The network is used only on your local network (port 8766, protected by a pairing key)
+* Optional weather on the home screen: off until you give your consent; then only the city and its coordinates are sent to Open-Meteo (EU) or OpenWeatherMap (your own key)
+
+Android 8.0 or later. Every extra permission (overlay, accessibility, usage access, notification access, Watch Next) is optional and only unlocks the feature it is for. Source code and skin format: github.com/MadeinTaly/ray-launcher

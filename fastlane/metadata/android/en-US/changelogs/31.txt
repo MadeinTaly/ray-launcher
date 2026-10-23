@@ -1,0 +1,6 @@
+First public beta.
+* Skin engine with a documented format, bundled skins and a day/night look that follows sunrise and sunset
+* Phone remote with air mouse, pairing by QR code, app companion and TV discovery
+* Screen filter with a daily or weekly schedule, and audio effects
+* Optional weather, only after consent (Open-Meteo or OpenWeatherMap)
+* No trackers: the network is used only on your local network

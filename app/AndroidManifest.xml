@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="dev.raylauncher"
+    android:versionCode="31"
+    android:versionName="0.2.0-beta.1">
+
+    <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="28" />
+
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.READ_TV_LISTINGS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Local-network remote server, and the optional weather lookup (only after consent). -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Finding the TVs on the local network (mDNS) from the phone app, like the WLED app does. -->
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <!-- Optional, only if granted with adb (pm grant): lets the Enable button turn on the accessibility service
+         by itself instead of sending the person to the Accessibility settings. -->
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
+    <!-- Optional, only if granted with adb (pm grant): lets the audio effects follow players that do not announce their
+         audio session, by reading which sessions are playing from the audio service. -->
+    <uses-permission android:name="android.permission.DUMP" />
+
+    <!-- Optional audio effects (equalizer, bass, virtualizer, loudness) on the output mix, where the device supports them. -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- Optional, granted in Settings (Usage access) or with adb (appops set dev.raylauncher GET_USAGE_STATS allow):
+         tells the phone companion which app is on screen. -->
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
+
+    <uses-feature android:name="android.software.leanback" android:required="false" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+
+    <application
+        android:label="RAY"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:banner="@drawable/ray_banner"
+        android:allowBackup="false"
+        android:usesCleartextTraffic="true">
+
+        <activity android:name="dev.raylauncher.MainActivity" android:exported="true" />
+
+        <activity android:name="dev.raylauncher.RayLauncherActivity" android:exported="true"
+            android:launchMode="singleTask"
+            android:taskAffinity="dev.raylauncher"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity-alias android:name=".RayHome"
+            android:targetActivity="dev.raylauncher.RayLauncherActivity"
+            android:exported="true" android:enabled="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity-alias>
+
+        <!-- Phone/tablet screen: the remote page in a WebView. Also opens TV pairing links (the TV's QR code). -->
+        <activity
+            android:name="dev.raylauncher.PhoneActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:taskAffinity="dev.raylauncher.companion"
+            android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="raylauncher" android:host="add" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" android:host="*" android:port="8766" />
+            </intent-filter>
+        </activity>
+
+        <!-- Controllable only by this app and from adb shell / root (shell holds DUMP), not by other apps. -->
+        <service
+            android:name="dev.raylauncher.DimService"
+            android:exported="true"
+            android:permission="android.permission.DUMP" />
+
+        <!-- Optional: lets the overlay be drawn as an accessibility overlay (full darkness, no touch blocking). -->
+        <service
+            android:name="dev.raylauncher.DimAccessibilityService"
+            android:exported="true"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service" />
+        </service>
+
+        <!-- Optional notification access: only to see and control other apps' media sessions (title, play/pause, seek). -->
+        <service
+            android:name="dev.raylauncher.RayMediaListener"
+            android:exported="true"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
+        <!-- Boot broadcasts are delivered one app at a time; the highest priority gets it first. -->
+        <receiver android:name="dev.raylauncher.BootReceiver" android:exported="true">
+            <intent-filter android:priority="999">
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0b0f">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="RAY">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <title>RAY</title>
+  <script>
+    document.documentElement.classList.add('dark');
+  </script>
+  <link rel="stylesheet" href="/remote.css">
+</head>
+<body class="app-shell">
+  <div class="water-ambient" aria-hidden="true"><div class="water-glow"></div></div>
+
+  <main class="max-w-3xl mx-auto px-4 pt-8 pb-16 space-y-4">
+    <header class="flex items-center gap-3 mb-2">
+      <div class="flex-1">
+        <h1 class="text-2xl">RAY</h1>
+        <p class="text-sm" style="color: var(--app-muted)" data-t="subtitle"></p>
+      </div>
+      <div class="flex gap-1 text-xs" role="group" aria-label="Language">
+        <button class="lang sm-chip" data-lang="en" style="min-height:2rem">EN</button>
+        <button class="lang sm-chip" data-lang="it" style="min-height:2rem">IT</button>
+      </div>
+    </header>
+
+    <div id="pair-error" class="hidden card" style="border-color: var(--app-primary)">
+      <p class="font-semibold" style="color: var(--app-accent)" data-t="pairTitle"></p>
+      <p class="text-sm mt-1" style="color: var(--app-muted)" data-t="pairText"></p>
+    </div>
+
+    <!-- Live controls -->
+    <section class="card space-y-5">
+      <div class="flex items-center justify-between">
+        <h2 class="font-bold text-lg" data-t="filter"></h2>
+        <label class="switch"><input id="on" type="checkbox"><span></span></label>
+      </div>
+      <div>
+        <div class="flex justify-between text-sm mb-1"><span style="color: var(--app-accent)" data-t="red"></span><span id="red-v"></span></div>
+        <input id="red" type="range" min="0" max="100" step="5" class="slider-amber w-full">
+      </div>
+      <div>
+        <div class="flex justify-between text-sm mb-1"><span style="color: var(--app-muted)" data-t="bright"></span><span id="bright-v"></span></div>
+        <input id="bright" type="range" min="5" max="100" step="5" class="slider-power w-full">
+      </div>
+      <div>
+        <div class="flex justify-between text-sm mb-1"><span style="color: var(--app-muted)" data-t="temp"></span><span id="temp-v"></span></div>
+        <input id="temp" type="range" min="1000" max="4000" step="100" class="slider-white w-full">
+      </div>
+      <div>
+        <div class="sm-group-label" data-t="profiles"></div>
+        <div id="quick" class="grid grid-cols-3 gap-2"></div>
+      </div>
+    </section>
+
+    <!-- Schedule: the dayrhythm component -->
+    <section class="pt-4 space-y-4" aria-labelledby="sched-h">
+      <header>
+        <h2 id="sched-h" class="text-2xl font-semibold" style="letter-spacing:-.04em" data-t="schedTitle"></h2>
+        <p class="text-sm mt-1" style="color: var(--app-muted)" data-t="schedSub"></p>
+      </header>
+
+      <div class="card space-y-4">
+        <div class="flex items-center justify-between gap-3">
+          <span class="font-semibold text-sm" data-t="schedActive"></span>
+          <label class="switch"><input id="sched-on" type="checkbox" data-al="schedActive"><span></span></label>
+        </div>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div>
+            <span class="label" id="week-l" data-t="weekMode"></span>
+            <div class="flex gap-1" role="group" aria-labelledby="week-l">
+              <button id="wk-daily" class="sm-chip flex-1 justify-center" type="button" data-t="weekDaily"></button>
+              <button id="wk-week" class="sm-chip flex-1 justify-center" type="button" data-t="weekWeekly"></button>
+            </div>
+          </div>
+          <div>
+            <label class="label" for="transition" data-t="transition"></label>
+            <select id="transition" class="input">
+              <option value="0" data-t="trOff"></option>
+              <option value="15">15 min</option>
+              <option value="30" selected>30 min</option>
+              <option value="60">60 min</option>
+            </select>
+          </div>
+        </div>
+        <p class="text-xs" style="color: var(--app-muted)" data-t="transitionHelp"></p>
+      </div>
+
+      <day-rhythm id="rhythm"></day-rhythm>
+
+      <p id="save-status" class="text-sm" style="color: var(--app-muted)" role="status" aria-live="polite"></p>
+      <p class="text-xs" style="color: var(--app-muted)" data-t="note"></p>
+    </section>
+
+    <div class="pt-2 flex flex-wrap justify-center gap-2">
+      <a id="open-app" class="btn-primary hidden" href="#" data-t="openApp"></a>
+      <a id="get-app" class="btn-secondary hidden" href="/ray.apk" data-t="getApp"></a>
+      <button id="a2hs" class="btn-secondary hidden" type="button" data-t="a2hs"></button>
+    </div>
+  </main>
+
+  <div class="sm-apply-bar">
+    <div class="sm-apply-inner">
+      <div class="sm-apply-feedback" aria-live="polite">
+        <span id="sm-dirty" class="hidden" style="color: var(--app-accent)" data-t="dirty"></span>
+        <span id="sm-status" style="color: var(--app-muted)"></span>
+      </div>
+      <button id="sm-apply" class="btn-primary ml-auto" data-t="apply"></button>
+    </div>
+  </div>
+
+  <dialog id="a2hs-dialog" class="card" aria-labelledby="a2hs-title" style="max-width:24rem;color:var(--app-ink)">
+    <h2 id="a2hs-title" class="font-bold text-lg" data-t="a2hs"></h2>
+    <p id="a2hs-text" class="text-sm my-3"></p>
+    <form method="dialog"><button class="btn-primary w-full" data-t="close"></button></form>
+  </dialog>
+
+<script type="module">
+import * as DR from '/dayrhythm/src/index.js';
+(function () {
+  'use strict';
+  var T = {
+    en: { subtitle: 'Warm filter and brightness for the TV', pairTitle: 'Not paired', pairText: 'Scan the QR code shown in the RAY app on the TV again.', filter: 'Filter', red: 'Warm filter', bright: 'Brightness', temp: 'Colour (lower = redder)', profiles: 'Profiles',
+      schedTitle: 'Schedule', schedSub: 'The TV changes setting by itself, even with the phone off. Changes are saved automatically.', schedActive: 'Schedule on',
+      weekMode: 'Days', weekDaily: 'Same every day', weekWeekly: 'Per weekday', transition: 'Transition', trOff: 'Off',
+      transitionHelp: 'Values glide gradually into the next slot over the chosen time. A manual change lasts until the next slot.',
+      saving: 'Saving…', saved: 'Saved', error: 'Error, not saved', note: 'Colours are a preview of a grey picture under the filter.',
+      a2hs: 'Add to Home screen', openApp: 'Open in the app', getApp: 'Download the Android app', close: 'Close',
+      a2hsIos: 'Tap Share, then Add to Home Screen.', a2hsOther: 'Open the browser menu ⋮, then Add to Home screen / Install app.',
+      models: { off: 'Off', soft: 'Soft', evening: 'Evening', cinema: 'Cinema', night: 'Night', deep: 'Deep night', custom: 'Custom' },
+      fields: { red: 'Warm filter', bright: 'Brightness', temp: 'Colour' },
+      fasce: { morning: 'Morning', afternoon: 'Afternoon', evening: 'Evening', film: 'Movie', night: 'Night' },
+      presets: { movie: 'Movie night', early: 'Early to bed', late: 'Night owl' } },
+    it: { subtitle: 'Filtro caldo e luminosità per il TV', pairTitle: 'Non abbinato', pairText: 'Inquadra di nuovo il QR mostrato nell’app RAY sul TV.', filter: 'Filtro', red: 'Filtro caldo', bright: 'Luminosità', temp: 'Colore (più basso = più rosso)', profiles: 'Profili',
+      schedTitle: 'Programmazione', schedSub: 'Il TV cambia impostazione da solo, anche col telefono spento. Le modifiche si salvano automaticamente.', schedActive: 'Programmazione attiva',
+      weekMode: 'Giorni', weekDaily: 'Uguale ogni giorno', weekWeekly: 'Per giorno', transition: 'Transizione', trOff: 'Nessuna',
+      transitionHelp: 'I valori scivolano gradualmente verso la fascia successiva nel tempo scelto. Una modifica manuale dura fino alla fascia successiva.',
+      saving: 'Salvataggio…', saved: 'Salvato', error: 'Errore, non salvato', note: 'I colori sono un’anteprima di un’immagine grigia sotto il filtro.',
+      a2hs: 'Aggiungi a schermata Home', openApp: 'Apri nell’app', getApp: 'Scarica l’app Android', close: 'Chiudi',
+      a2hsIos: 'Tocca Condividi, poi Aggiungi a schermata Home.', a2hsOther: 'Apri il menu del browser ⋮, poi Aggiungi a schermata Home / Installa app.',
+      models: { off: 'Spento', soft: 'Tenue', evening: 'Sera', cinema: 'Cinema', night: 'Notte', deep: 'Notte fonda', custom: 'Personalizzato' },
+      fields: { red: 'Filtro caldo', bright: 'Luminosità', temp: 'Colore' },
+      fasce: { morning: 'Mattina', afternoon: 'Pomeriggio', evening: 'Sera', film: 'Film', night: 'Notte' },
+      presets: { movie: 'Serata film', early: 'A letto presto', late: 'Nottambulo' } }
+  };
+  var saved = null; try { saved = localStorage.getItem('od_lang'); } catch (e) {}
+  var phoneLang = (navigator.language || 'en').slice(0, 2);
+  var lang = T[saved] ? saved : (T[phoneLang] ? phoneLang : 'en');
+  var L = T[lang];
+  function $(id) { return document.getElementById(id); }
+  var rhythm = $('rhythm');
+
+  function applyTexts() {
+    document.documentElement.lang = lang;
+    Array.prototype.forEach.call(document.querySelectorAll('[data-t]'), function (el) { el.textContent = L[el.getAttribute('data-t')]; });
+    Array.prototype.forEach.call(document.querySelectorAll('.lang'), function (b) {
+      var on = b.getAttribute('data-lang') === lang;
+      b.setAttribute('aria-pressed', String(on));
+      b.style.background = on ? 'var(--app-surface-soft)' : '';
+      b.style.borderColor = on ? 'var(--app-accent)' : '';
+    });
+    $('sched-on').setAttribute('aria-label', L.schedActive);
+  }
+
+  // Pairing key: arrives in the URL fragment from the QR code, then kept on the phone.
+  var m = location.hash.match(/k=([0-9a-f]+)/);
+  if (m) { try { localStorage.setItem('od_key', m[1]); } catch (e) {} history.replaceState(null, '', location.pathname); }
+  var key = m ? m[1] : (function () { try { return localStorage.getItem('od_key'); } catch (e) { return null; } })();
+
+  function api(path, body) {
+    return fetch(path, {
+      method: body ? 'POST' : 'GET',
+      headers: body ? { 'X-Key': key || '', 'Content-Type': 'application/json' } : { 'X-Key': key || '' },
+      body: body ? JSON.stringify(body) : undefined
+    }).then(function (r) {
+      $('pair-error').classList.toggle('hidden', r.status !== 403);
+      if (!r.ok) throw new Error(r.status);
+      return r.json();
+    });
+  }
+
+  // ---- Profiles (shared by the quick buttons and the schedule) ----
+  var MODELS = [
+    { id: 'off',     on: false, red: 0,  bright: 100, temp: 1100 },
+    { id: 'soft',    on: true,  red: 10, bright: 70,  temp: 1800 },
+    { id: 'evening', on: true,  red: 20, bright: 40,  temp: 1100 },
+    { id: 'cinema',  on: true,  red: 15, bright: 55,  temp: 1500 },
+    { id: 'night',   on: true,  red: 20, bright: 10,  temp: 1100 },
+    { id: 'deep',    on: true,  red: 40, bright: 5,   temp: 1000 },
+    { id: 'custom',  on: true,  red: 20, bright: 40,  temp: 1100 }
+  ];
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  // Preview of a mid-grey picture under the filter, same formula as the app (DimService.java).
+  function kelvinRgb(k) {
+    var t = k / 100, r, g, b;
+    r = t <= 66 ? 255 : 329.698727446 * Math.pow(t - 60, -0.1332047592);
+    g = t <= 66 ? 99.4708025861 * Math.log(t) - 161.1195681661 : 288.1221695283 * Math.pow(t - 60, -0.0755148492);
+    b = t >= 66 ? 255 : t <= 19 ? 0 : 138.5177312231 * Math.log(t - 10) - 305.0447927307;
+    return [r, g, b].map(function (v) { return clamp(Math.round(v), 0, 255); });
+  }
+  function previewCss(v) {
+    if (v.on === false) return 'rgb(205,205,205)';
+    var tint = kelvinRgb(v.temp), tintA = v.red / 100 * 0.65, dimA = (100 - v.bright) / 100, base = 205;
+    var c = tint.map(function (x) { return ((base * (1 - tintA) + x * tintA) * (1 - dimA)) | 0; });
+    return 'rgb(' + c.join(',') + ')';
+  }
+  function screenIcon(model) {
+    if (model.id === 'off') return '<span class="od-screen off"></span>';
+    if (model.id === 'custom') return '<span class="od-screen custom"></span>';
+    return '<span class="od-screen" style="background:' + previewCss(model) + '"></span>';
+  }
+  // The same tiny screen as an SVG image for the component's slot icons.
+  function iconUri(model) {
+    var fill = model.id === 'off' ? '#2b3f5e' : model.id === 'custom' ? 'url(#g)' : previewCss(model);
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 24"><defs><linearGradient id="g"><stop offset="0" stop-color="#ff6b4d"/><stop offset=".55" stop-color="#6e2a24"/><stop offset="1" stop-color="#0b0b0f"/></linearGradient></defs>' +
+      '<rect x="2" y="2" width="28" height="17" rx="3" fill="' + fill + '" stroke="#ffd9b3" stroke-width="2"/>' +
+      (model.id === 'off' ? '<path d="M4 17L28 4M4 11L20 3M12 19L29 10" stroke="#c9a88a" stroke-width="1.5"/>' : '') +
+      '<rect x="11" y="21" width="10" height="2" rx="1" fill="#ffd9b3"/></svg>';
+    return { src: 'data:image/svg+xml,' + encodeURIComponent(svg) };
+  }
+
+  // ---- Live controls ----
+  var deviceOffset = 0, current = null;
+  function labels() {
+    $('red-v').textContent = $('red').value + '%';
+    $('bright-v').textContent = $('bright').value + '%';
+    $('temp-v').textContent = $('temp').value + ' K';
+  }
+  function show(s) {
+    if (typeof s.minute === 'number') {
+      var n = new Date(); deviceOffset = s.minute - (n.getHours() * 60 + n.getMinutes() + n.getSeconds() / 60);
+      if (deviceOffset > 720) deviceOffset -= 1440; if (deviceOffset < -720) deviceOffset += 1440;
+      try { rhythm.clockOffset = Math.round(deviceOffset * 10) / 10; } catch (e) {}
+    }
+    $('on').checked = s.on;
+    $('red').value = s.red; $('bright').value = s.bright; $('temp').value = s.temp;
+    labels();
+    current = s; renderQuick();
+  }
+  var pending = null;
+  function sendLive() {
+    clearTimeout(pending);
+    pending = setTimeout(function () {
+      api('/api/set', { on: true, red: +$('red').value, bright: +$('bright').value, temp: +$('temp').value })
+        .then(show).catch(function () {});
+    }, 120);
+  }
+  ['red', 'bright', 'temp'].forEach(function (id) {
+    $(id).addEventListener('input', function () { labels(); $('on').checked = true; sendLive(); });
+  });
+  $('on').addEventListener('change', function () { api('/api/set', { on: $('on').checked }).then(show).catch(function () {}); });
+  function renderQuick() {
+    var box = $('quick'); box.innerHTML = '';
+    MODELS.forEach(function (mo) {
+      if (mo.id === 'off' || mo.id === 'custom') return;
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'sm-model-option';
+      var active = current && current.on && current.red === mo.red && current.bright === mo.bright && current.temp === mo.temp;
+      b.setAttribute('aria-pressed', String(!!active));
+      b.innerHTML = '<div>' + screenIcon(mo) + '</div><div>' + L.models[mo.id] + '</div>';
+      b.onclick = function () { api('/api/set', { on: true, red: mo.red, bright: mo.bright, temp: mo.temp }).then(show).catch(function () {}); };
+      box.appendChild(b);
+    });
+  }
+  function refresh() { return api('/api/state').then(show).catch(function () {}); }
+
+  // ---- Schedule: <day-rhythm> ----
+  var core = DR.core;
+  var FASCE = [
+    { key: 'morning', time: '07:00' }, { key: 'afternoon', time: '14:00' }, { key: 'evening', time: '19:30' },
+    { key: 'film', time: '21:00' }, { key: 'night', time: '23:00' }
+  ];
+  var PRESETS = [
+    { id: 'movie', icon: '🎬', slots: [['07:00', 'off', 'morning'], ['14:00', 'off', 'afternoon'], ['19:30', 'evening', 'evening'], ['21:00', 'cinema', 'film'], ['23:30', 'night', 'night']] },
+    { id: 'early', icon: '😴', slots: [['07:00', 'off', 'morning'], ['16:00', 'soft', 'afternoon'], ['19:00', 'evening', 'evening'], ['21:00', 'night', 'film'], ['22:30', 'deep', 'night']] },
+    { id: 'late',  icon: '🦉', slots: [['08:30', 'off', 'morning'], ['15:00', 'off', 'afternoon'], ['20:30', 'soft', 'evening'], ['22:00', 'cinema', 'film'], ['01:00', 'night', 'night']] }
+  ];
+  function modelById(id) { for (var i = 0; i < MODELS.length; i++) if (MODELS[i].id === id) return MODELS[i]; return null; }
+  function valuesOf(mo) { return { on: mo.on, red: mo.red, bright: mo.bright, temp: mo.temp }; }
+  function slot(time, modelId, label) { return { time: time, model: modelId, label: label, values: valuesOf(modelById(modelId)) }; }
+  function defaultValue() { return FASCE.map(function (f) { return slot(f.time, f.key === 'evening' ? 'evening' : f.key === 'film' ? 'cinema' : f.key === 'night' ? 'night' : 'off', L.fasce[f.key]); }); }
+
+  // Flat slots of older versions {time,on,red,bright,temp,model,label} to dayrhythm slots.
+  function fromFlat(s) {
+    if (s.values || !('red' in s)) return s;
+    var mo = modelById(s.model), id = mo ? mo.id : (s.on === false ? 'off' : 'custom');
+    var o = { time: s.time, model: id, values: { on: s.on !== false, red: s.red, bright: s.bright, temp: s.temp } };
+    if (s.label) o.label = s.label;
+    return o;
+  }
+  function normSlots(list) { return (list || []).map(fromFlat); }
+  function normValue(v) {
+    if (Array.isArray(v)) return normSlots(v);
+    if (v && v.week) { var w = {}; Object.keys(v.week).forEach(function (d) { var x = v.week[d]; w[d] = Array.isArray(x) ? normSlots(x) : x; }); return { week: w }; }
+    return null;
+  }
+
+  function config() {
+    return {
+      theme: 'organic', colorScheme: 'dark', locale: lang, credits: 'minimal', week: weekly ? 'top' : 'off',
+      maxSlots: 12, minGap: 5, snap: 5, timeFormat: '24h', editor: 'full',
+      messages: (function () {
+        var o = {}; MODELS.forEach(function (mo) { o['model.' + mo.id] = L.models[mo.id]; });
+        Object.keys(L.fields).forEach(function (k) { o['field.' + k] = L.fields[k]; });
+        return o;
+      })(),
+      models: MODELS.map(function (mo) {
+        var o = { id: mo.id, label: L.models[mo.id], icon: iconUri(mo), defaults: valuesOf(mo) };
+        if (mo.id === 'off') o.off = true;
+        else {
+          o.preview = function (v) { return previewCss(v && v.temp != null ? v : mo); };
+          o.summary = '{bright}% · {temp} K';
+        }
+        if (mo.id === 'custom') o.fields = [
+          { key: 'red', type: 'range', label: L.fields.red, min: 0, max: 100, step: 5, unit: '%', default: 20, accent: '#ff2b2b' },
+          { key: 'bright', type: 'range', label: L.fields.bright, min: 5, max: 100, step: 5, unit: '%', default: 40, accent: '#ff6b4d' },
+          { key: 'temp', type: 'range', label: L.fields.temp, min: 1000, max: 4000, step: 100, format: '{value} K', default: 1100, accent: '#ffd9b3' }
+        ];
+        return o;
+      }),
+      presets: PRESETS.map(function (p) {
+        return { id: p.id, label: L.presets[p.id], icon: p.icon, slots: function () { return p.slots.map(function (s) { return slot(s[0], s[1], L.fasce[s[2]]); }); } };
+      })
+    };
+  }
+
+  var weekly = false, transition = 30, enabled = false;
+  function setWeekly(w) {
+    weekly = w;
+    $('wk-daily').setAttribute('aria-pressed', String(!w));
+    $('wk-week').setAttribute('aria-pressed', String(w));
+    [['wk-daily', !w], ['wk-week', w]].forEach(function (x) {
+      $(x[0]).style.background = x[1] ? 'var(--app-surface-soft)' : '';
+      $(x[0]).style.borderColor = x[1] ? 'var(--app-accent)' : '';
+    });
+  }
+  function stripIds(slots) { return slots.map(function (s) { var c = JSON.parse(JSON.stringify(s)); delete c.id; return c; }); }
+  function setValue(v) {
+    var isW = core.isWeek(v);
+    setWeekly(isW); rhythm.week = isW ? 'top' : 'off';
+    rhythm.value = v;
+  }
+  function toWeekly(on) {
+    if (on === weekly) return;
+    var v;
+    if (on) {
+      var day = stripIds(rhythm.getValue()), w = {};
+      core.WEEKDAYS.forEach(function (d) { w[d] = JSON.parse(JSON.stringify(day)); });
+      v = { week: w };
+    } else v = stripIds(rhythm.getDay());
+    setValue(v); scheduleSave();
+  }
+  $('wk-daily').addEventListener('click', function () { toWeekly(false); });
+  $('wk-week').addEventListener('click', function () { toWeekly(true); });
+
+  var status = $('save-status'), saveTimer = null, saving = 0;
+  function payload() {
+    var v = rhythm.getValue();
+    return { enabled: enabled, value: v, resolved: core.isWeek(v) ? core.resolveWeek(v, rhythm.days) : v, transition: transition };
+  }
+  function scheduleSave() {
+    clearTimeout(saveTimer);
+    status.textContent = L.saving;
+    saveTimer = setTimeout(save, 800);
+  }
+  function save() {
+    saveTimer = null; saving++;
+    return api('/api/schedule', payload()).then(function () {
+      if (!saveTimer) status.textContent = '✓ ' + L.saved;
+      setTimeout(refresh, 400);
+    }).catch(function () { status.textContent = '✕ ' + L.error; }).then(function () { saving--; });
+  }
+  rhythm.addEventListener('change', scheduleSave);
+  $('sched-on').addEventListener('change', function () { enabled = $('sched-on').checked; scheduleSave(); });
+  $('transition').addEventListener('change', function () { transition = +$('transition').value; scheduleSave(); });
+
+  // Saved days live on the TV (/api/days: [{name, slots}], delete with {name, delete:true}).
+  function loadDays() {
+    return api('/api/days').then(function (d) {
+      rhythm.days = (Array.isArray(d) ? d : []).map(function (x) { return { id: x.name, name: x.name, slots: normSlots(x.slots) }; });
+    }).catch(function () {});
+  }
+  rhythm.addEventListener('daysave', function (e) {
+    e.detail.waitUntil(api('/api/days', { name: e.detail.name, slots: e.detail.slots }).then(loadDays));
+  });
+  rhythm.addEventListener('daydelete', function (e) {
+    e.detail.waitUntil(api('/api/days', { name: e.detail.day.name, delete: true }).then(loadDays));
+  });
+  rhythm.addEventListener('error', function () { status.textContent = '✕ ' + L.error; });
+
+  function loadSchedule() {
+    return api('/api/schedule').then(function (d) {
+      var v = normValue(d.value) || normValue(d.resolved) || normValue(d.slots);
+      enabled = !!d.enabled; $('sched-on').checked = enabled;
+      transition = typeof d.transition === 'number' ? d.transition : 30;
+      $('transition').value = String(transition);
+      if (!v || (Array.isArray(v) && !v.length)) v = defaultValue();
+      setValue(v);
+    }).catch(function () {});
+  }
+
+  // ---- Language ----
+  function setLang(l) {
+    lang = l; L = T[l];
+    try { localStorage.setItem('od_lang', l); } catch (e) {}
+    applyTexts(); renderQuick(); renderA2hs();
+    var v = rhythm.getValue(), d = rhythm.days;
+    rhythm.config = config();
+    setValue(v); rhythm.days = d;
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.lang'), function (b) {
+    b.addEventListener('click', function () { setLang(b.getAttribute('data-lang')); });
+  });
+
+  // ---- Add to Home screen ----
+  var installEvt = null, standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+  var isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  function renderA2hs() { $('a2hs-text').textContent = isIos ? L.a2hsIos : L.a2hsOther; }
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); installEvt = e; });
+  $('a2hs').addEventListener('click', function () {
+    if (installEvt) { var ev = installEvt; installEvt = null; ev.prompt(); return; }
+    var dlg = $('a2hs-dialog');
+    if (dlg.showModal) dlg.showModal(); else alert($('a2hs-text').textContent);
+  });
+  // Inside the Android app (WebView with the RayApp user agent) neither button makes sense.
+  var inApp = /RayApp\//.test(navigator.userAgent), isAndroid = /Android/.test(navigator.userAgent);
+  if (!standalone && !inApp) $('a2hs').classList.remove('hidden');
+
+  // Android browser, not in the app: a link that hands this TV over to the app (pairing), or to the download page.
+  var tvName = '';
+  function openAppLink() {
+    var fallback = encodeURIComponent(location.origin + '/ray.apk');
+    $('open-app').href = 'intent://add?host=' + encodeURIComponent(location.hostname) + '&port=' + (location.port || 80) +
+      '&k=' + encodeURIComponent(key || '') + '&name=' + encodeURIComponent(tvName || location.hostname) +
+      '#Intent;scheme=raylauncher;package=dev.raylauncher;S.browser_fallback_url=' + fallback + ';end';
+  }
+  if (isAndroid && !inApp && key) {
+    openAppLink();
+    $('open-app').classList.remove('hidden');
+    $('get-app').classList.remove('hidden');
+    api('/api/info').then(function (i) { tvName = i.name || ''; openAppLink(); }).catch(function () {});
+  }
+
+  // ---- Boot ----
+  applyTexts(); renderA2hs(); labels(); renderQuick();
+  rhythm.config = config();
+  setValue(defaultValue());
+  refresh(); loadSchedule(); loadDays();
+  setInterval(function () { if (!document.hidden) refresh(); }, 15000);
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) return;
+    refresh();
+    if (!saveTimer && !saving && !rhythm.editing) { loadSchedule(); loadDays(); }
+  });
+})();
+</script>
+</body>
+</html>

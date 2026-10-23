@@ -1,0 +1,6 @@
+Prima beta pubblica.
+* Motore di skin con formato documentato, skin incluse e aspetto giorno/notte con alba e tramonto
+* Telecomando sul telefono con mouse ad aria, abbinamento con QR, app companion e ricerca delle TV
+* Filtro schermo con programmazione giornaliera o settimanale, ed effetti audio
+* Meteo facoltativo, solo dopo il consenso (Open-Meteo o OpenWeatherMap)
+* Nessun tracker: la rete è usata solo nella tua rete locale
