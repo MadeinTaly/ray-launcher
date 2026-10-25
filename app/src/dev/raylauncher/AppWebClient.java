@@ -27,6 +27,10 @@ final class AppWebClient extends WebViewClient {
             return true;
         }
         if (url.equals(origin) || url.startsWith(origin + "/")) return false;
+        if ("raylauncher".equals(uri.getScheme())) { // pairing link from the RAY connect screen (found TV + its code)
+            activity.addPairingLink(url);
+            return true;
+        }
         if (url.startsWith("raylauncher-app://")) {
             activity.appAction(Uri.parse(url).getHost());
             return true;

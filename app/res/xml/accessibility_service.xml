@@ -3,4 +3,5 @@
     android:accessibilityEventTypes="typeWindowStateChanged"
     android:accessibilityFeedbackType="feedbackGeneric"
     android:canRetrieveWindowContent="false"
+    android:canPerformGestures="true"
     android:description="@string/accessibility_description" />

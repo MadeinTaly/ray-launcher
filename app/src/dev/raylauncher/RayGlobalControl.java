@@ -90,6 +90,8 @@ final class RayGlobalControl {
             px = Math.max(0, Math.min(width - 1, Math.round(x * width)));
             py = Math.max(0, Math.min(height - 1, Math.round(y * height)));
         }
+        DimAccessibilityService a11y = DimAccessibilityService.instance;
+        if (a11y != null && a11y.tap(px, py)) return true;
         return runRootCommand("tap " + px + " " + py);
     }
 
@@ -398,7 +400,6 @@ final class RayGlobalControl {
      * RenderNode property change: no layout, no display-list re-record, no redraw of the launcher under it.
      */
     static final class Pointer extends android.widget.FrameLayout {
-        private static final RayPtrStat APPLY = new RayPtrStat("apply");
         private final Arrow arrow;
         private float anchorX, anchorY;
         private boolean positioned;
@@ -417,7 +418,6 @@ final class RayGlobalControl {
             setVisibility(INVISIBLE);
         }
         void setPosition(float x, float y, boolean forceWake) {
-            if (RayPtrStat.ON) APPLY.tick();
             int width = getWidth() > 0 ? getWidth() : getResources().getDisplayMetrics().widthPixels;
             int height = getHeight() > 0 ? getHeight() : getResources().getDisplayMetrics().heightPixels;
             float dx = (x - anchorX) * width, dy = (y - anchorY) * height;
@@ -447,7 +447,6 @@ final class RayGlobalControl {
      * air-mouse render thread), so a busy UI thread (focus changes, scene repaints) can no longer stall the pointer.
      */
     static final class Overlay extends android.view.SurfaceView implements android.view.SurfaceHolder.Callback {
-        private static final RayPtrStat DRAW = new RayPtrStat("ptr-draw");
         private final Arrow arrow;
         private int w, h;
         private boolean ready;
@@ -482,7 +481,6 @@ final class RayGlobalControl {
                 MAIN.postDelayed(idle, 2000);
             }
             lastDraw = android.os.SystemClock.uptimeMillis();
-            if (RayPtrStat.ON) DRAW.tick();
             paint(x, y);
             return true;
         }

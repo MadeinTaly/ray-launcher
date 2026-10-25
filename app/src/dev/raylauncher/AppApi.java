@@ -26,9 +26,8 @@ import java.nio.charset.StandardCharsets;
  *   GET  /api/devices    saved devices [{"id":"host:port","name":..,"host":..,"port":..}] (keys stay in the app)
  *   POST /api/devices    {"op":"add","link":..} | {"op":"edit","id":..,"name":..,"type":..} (either) | {"op":"delete","id":..}
  *                        type: projector, tv, tablet, phone, monitor or other (icon only)
- *   ANY  /d/{host:port}/api/...   forwarded to that saved device with its pairing key; if it does not answer it is
- *                        searched on the local network (Finder) and, when found at a new address, the answer carries
- *                        the header X-Moved-To: {newhost:port}
+ *   ANY  /d/{host:port}/api/...   forwarded to that saved device with its pairing key; for a TV that Discovery saw at
+ *                        a new address the answer carries the header X-Moved-To: {newhost:port}
  */
 final class AppApi {
     /** Old id -> new id of TVs found at a new address while the app runs, for pages still using the old id. */
@@ -131,23 +130,9 @@ final class AppApi {
         Object[] r;
         try {
             r = call(host, port, d.optString("key"), rest, method, body, length);
-        } catch (IOException e) {
-            // the TV may have got a new address (DHCP after a reboot): look for it with its pairing key
-            String found = Finder.find(id, host, port, d.optString("key"));
-            if (found == null) {
-                RemoteServer.send(out, 502, "application/json", "{\"error\":\"unreachable\"}");
-                return;
-            }
-            Devices.move(p, host, port, found);
-            moved = found + ":" + port;
-            MOVED.put(id, moved);
-            MOVED.put(host + ":" + port, moved);
-            try {
-                r = call(found, port, d.optString("key"), rest, method, body, length);
-            } catch (IOException e2) {
-                RemoteServer.send(out, 502, "application/json", "{\"error\":\"unreachable\"}", "X-Moved-To: " + moved);
-                return;
-            }
+        } catch (IOException e) { // a TV at a new address is followed by Discovery (mDNS)
+            RemoteServer.send(out, 502, "application/json", "{\"error\":\"unreachable\"}");
+            return;
         }
         RemoteServer.send(out, (Integer) r[0], "application/json", (byte[]) r[1], moved == null ? null : "X-Moved-To: " + moved);
     }

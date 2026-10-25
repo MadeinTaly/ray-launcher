@@ -20,7 +20,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 final class RaySocket {
     private static final int LIMIT = 32768;
-    private static final RayPtrStat ARRIVE = new RayPtrStat("tcp-arrive");
     private static final java.util.Timer AUTH_TIMER = new java.util.Timer("ray-auth-deadline", true);
     private static final CopyOnWriteArrayList<RaySocket> CLIENTS = new CopyOnWriteArrayList<>();
     private static final ExecutorService PUSH = Executors.newSingleThreadExecutor();
@@ -79,7 +78,6 @@ final class RaySocket {
             if (opcode != 1) { close(out, 1003); return; }
             long now = android.os.SystemClock.uptimeMillis();
             if (now - commandWindow >= 1000) { commandWindow = now; commands = 0; fastCommands = 0; }
-            if (RayPtrStat.ON) ARRIVE.tick();
             JSONObject request;
             try {
                 request = new JSONObject(new String(payload, StandardCharsets.UTF_8));
@@ -244,10 +242,9 @@ final class RaySocket {
         JSONObject[] result = new JSONObject[1];
         main.post(new Runnable() {
             @Override public void run() {
-                long t0 = System.nanoTime(), q = t0;
                 try { result[0] = RayLauncherActivity.command(service, payload); }
                 catch (Exception ignored) { }
-                finally { done.countDown(); if (RayPtrStat.ON) android.util.Log.i("RayPtr", "cmd " + (System.nanoTime() - t0) / 1000 + "us"); }
+                finally { done.countDown(); }
             }
         });
         try { done.await(3, TimeUnit.SECONDS); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }

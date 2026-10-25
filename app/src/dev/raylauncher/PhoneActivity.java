@@ -71,6 +71,8 @@ public class PhoneActivity extends Activity implements View.OnClickListener, Dia
     private Sensor gyroSensor;
     private Sensor accelSensor;
     private boolean localPage = true;
+    /** With no TV: the local device manager (app.html) instead of the RAY connect screen. */
+    private boolean manager;
     private boolean resumed;
     private boolean rayPage;
     private boolean sensorRunning;
@@ -342,6 +344,7 @@ public class PhoneActivity extends Activity implements View.OnClickListener, Dia
             }
         }
         menuDeviceIds = ids.toArray(new String[ids.size()]);
+        labels.add(t("Add TV", "Aggiungi TV"));
         labels.add(t("Local device manager", "Gestione locale dispositivi"));
         new AlertDialog.Builder(this).setItems(labels.toArray(new String[labels.size()]), this).show();
     }
@@ -357,7 +360,15 @@ public class PhoneActivity extends Activity implements View.OnClickListener, Dia
                 .setPositiveButton(t("Connect", "Connetti"), this).show();
     }
 
-    private void addPairingLink(String value) {
+    /** The RAY connect screen: TVs found on the network, their code or the QR. */
+    private void showConnect() {
+        localPage = true;
+        manager = false;
+        refreshSelector();
+        startLoad();
+    }
+
+    void addPairingLink(String value) {
         Uri uri = Uri.parse(value.trim());
         String deviceId = Devices.addLink(prefs, uri);
         JSONObject device = deviceId == null ? null : Devices.byId(prefs, deviceId);
@@ -373,6 +384,7 @@ public class PhoneActivity extends Activity implements View.OnClickListener, Dia
 
     private void showLocalManager() {
         localPage = true;
+        manager = true;
         rayPage = false;
         stopMotion();
         updateMotionControls();
@@ -386,7 +398,8 @@ public class PhoneActivity extends Activity implements View.OnClickListener, Dia
 
     private void loadLocal() {
         final int gen = ++localGen;
-        final String url = client.origin + "/app.html?r=" + System.currentTimeMillis() + "#k=" + DimService.pairingKey(prefs);
+        final String url = manager ? client.origin + "/app.html?r=" + System.currentTimeMillis() + "#k=" + DimService.pairingKey(prefs)
+                : client.origin + "/ray#local=" + DimService.pairingKey(prefs);
         new Thread(new Runnable() {
             @Override public void run() {
                 for (int i = 0; i < 25 && gen == localGen; i++) {
@@ -448,6 +461,7 @@ public class PhoneActivity extends Activity implements View.OnClickListener, Dia
             if ("settings/motion".equals(what)) showSensitivity();
             else if ("devices/select".equals(what)) showDevices();
             else if ("scan".equals(what)) scan();
+            else if ("add".equals(what)) showPairingDialog();
             else if ("overlay".equals(what)) startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                     Uri.parse("package:" + getPackageName())));
             else if ("accessibility".equals(what)) {
@@ -552,7 +566,8 @@ public class PhoneActivity extends Activity implements View.OnClickListener, Dia
             sensitivityInput = null;
             volumeMotionInput = null;
         } else if (menuDeviceIds != null) {
-            if (which == menuDeviceIds.length) showLocalManager();
+            if (which == menuDeviceIds.length) showConnect();
+            else if (which == menuDeviceIds.length + 1) showLocalManager();
             else if (which >= 0 && which < menuDeviceIds.length) {
                 prefs.edit().putString(LAST_DEVICE, menuDeviceIds[which]).apply();
                 localPage = false;

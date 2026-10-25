@@ -30,8 +30,6 @@ final class RayPointerUdp implements Runnable {
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static Handler render;
     private static RayPointerUdp instance;
-    private static final RayPtrStat FRAME = new RayPtrStat("vsync-frame");
-    private static final RayPtrStat ARRIVE = new RayPtrStat("udp-arrive");
 
     // motion accumulator, shared by the UDP thread and the WebSocket reader (reference pixels)
     private static final Object ACC = new Object();
@@ -41,10 +39,9 @@ final class RayPointerUdp implements Runnable {
     // render thread only
     private static boolean scheduled, dirty;
     private static long lastMove, lastFocus;
-    private static int frames, sn;
+    private static int sn;
     private static final long[] st = new long[16];
     private static final float[] sx = new float[16], sy = new float[16];
-    private static long sumX, sumY; // debug (RayPtrStat.ON): total reference pixels applied
 
     private final DimService service;
     private final DatagramSocket socket;
@@ -88,7 +85,6 @@ final class RayPointerUdp implements Runnable {
                     buf[0] = ECHO;
                     socket.send(new DatagramPacket(buf, LEN, p.getSocketAddress()));
                 } else if (buf[0] == DELTA) {
-                    if (RayPtrStat.ON) ARRIVE.tick();
                     delta(service, RayMotionMath.dxOf(buf), RayMotionMath.dyOf(buf));
                 }
             } catch (java.io.IOException e) {
@@ -192,14 +188,11 @@ final class RayPointerUdp implements Runnable {
                     int i = sn++ & 15;
                     st[i] = now; sx[i] = x * dm.widthPixels; sy[i] = y * dm.heightPixels;
                 }
-                if (RayPtrStat.ON) { sumX += ax; sumY += ay; }
             }
             if (moved) {
-                if (RayPtrStat.ON) FRAME.tick();
                 if (!RayGlobalControl.glide(x, y)) fallback(s);
                 // the focus search walks every view and repaints the hero/scene: only while (nearly) slow, never mid-sweep
                 if (now - lastFocus >= 50 && speed(now) < 300) focus(now);
-                if (RayPtrStat.ON && (++frames & 127) == 0) android.util.Log.i("RayPtr", "applied sum=" + sumX + "," + sumY + " pos=" + x + "," + y);
             } else if (dirty && now - lastMove >= 80) {
                 dirty = false; // stopped: one last search
                 focus(now);

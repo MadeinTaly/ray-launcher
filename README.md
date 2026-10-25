@@ -122,6 +122,14 @@ Sample content (generated, no third-party artwork) shown with different skins.
 ![Astrolabio](fastlane/metadata/android/en-US/images/tvScreenshots/4.png)
 ![Giardino, night](fastlane/metadata/android/en-US/images/tvScreenshots/8.png)
 
+## Screenshots
+
+Sample content (generated, no third-party artwork) shown with different skins.
+
+![Essenziale, day](fastlane/metadata/android/en-US/images/tvScreenshots/1.png)
+![Astrolabio](fastlane/metadata/android/en-US/images/tvScreenshots/4.png)
+![Giardino, night](fastlane/metadata/android/en-US/images/tvScreenshots/8.png)
+
 ## Privacy
 
 RAY has no accounts, analytics or ads, and talks only to your local network. The only internet request is the
