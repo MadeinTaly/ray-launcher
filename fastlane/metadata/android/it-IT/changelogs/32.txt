@@ -1,0 +1,7 @@
+* Target Android 15: niente blocco di Play Protect su Google TV
+* Nuova home Essenziale: app recenti e fissate, QR più grande
+* Sfondi di montagna giorno e notte, nuovo carattere; Aurora ridisegnata e animata
+* Musica di sottofondo facoltativa (CC0)
+* Telecomando: funziona sopra le altre app senza root (Android 13+), pulsante Ricentra
+* Endpoint MCP per assistenti AI (spento di default), pannello debug
+* Tedesco, francese e spagnolo

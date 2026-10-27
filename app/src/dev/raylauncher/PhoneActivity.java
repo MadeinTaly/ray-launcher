@@ -104,6 +104,7 @@ public class PhoneActivity extends Activity implements View.OnClickListener, Dia
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        I18n.init(this);
         if (Compat.isTv(this)) {
             startActivity(new Intent(this, RayLauncherActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
             finish();
@@ -171,6 +172,7 @@ public class PhoneActivity extends Activity implements View.OnClickListener, Dia
         error.setOnClickListener(this);
         error.setVisibility(View.GONE);
         body.addView(error, new FrameLayout.LayoutParams(-1, -1));
+        Compat.padForSystemBars(body);
         setContentView(body);
 
         discovery = new Discovery(this, prefs);

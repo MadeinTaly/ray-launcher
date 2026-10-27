@@ -101,7 +101,7 @@ final class RaySocket {
             JSONObject result = command(command, payloadObject);
             boolean ok = result != null && result.optBoolean("ok", false);
             if (!command.equals("remote.motion") && !command.equals("remote.pointer") && !command.equals("remote.delta")) {
-                sendJson(out, message("ack", "id", id, "ok", ok, "error", ok ? "" : "UNSUPPORTED_ACTION"));
+                sendJson(out, message("ack", "id", id, "ok", ok, "error", ok ? "" : result == null ? "UNSUPPORTED_ACTION" : result.optString("error", "UNSUPPORTED_ACTION")));
                 snapshot(out);
             }
         }
@@ -166,11 +166,28 @@ final class RaySocket {
                 || command.equals("remote.key") || command.equals("remote.pointer") || command.equals("remote.motion") || command.equals("remote.delta")
                 || command.equals("launcher.home") || command.equals("app.launch") || command.equals("filter.set")
                 || command.equals("audio.set") || command.equals("scene.apply") || command.equals("theme.set") || command.equals("weather.set")
-                || command.equals("weather.consent") || command.equals("vpn.open")
+                || command.equals("weather.consent") || command.equals("vpn.open") || command.equals("music.set") || command.equals("debug.set")
                 || command.equals("media.control") || command.equals("media.search") || command.equals("media.open");
     }
 
+    /** One companion command without a socket (the MCP endpoint): the same checks and results as the phone's. */
+    static JSONObject exec(DimService service, Handler main, String name, JSONObject request) {
+        if (!allowed(name)) return message("result", "ok", false, "error", "command");
+        return new RaySocket(null, service, main, null).command(name, request);
+    }
+
+    /** The snapshot a phone receives, for the MCP endpoint. */
+    static JSONObject state(DimService service, Handler main) {
+        return new RaySocket(null, service, main, null).snapshotData();
+    }
+
     private JSONObject command(String name, JSONObject request) {
+        if (!name.startsWith("remote.") || name.equals("remote.key")) RayDebug.log("cmd " + name + " " + request);
+        if (name.equals("debug.set")) {
+            if (!(request.opt("on") instanceof Boolean)) return message("result", "ok", false);
+            RayDebug.set(service, request.optBoolean("on"));
+            return message("result", "ok", true);
+        }
         if (name.equals("remote.key") || name.equals("ok") || name.equals("back")
                 || name.equals("up") || name.equals("down") || name.equals("left") || name.equals("right")) {
             String key = keyName(request.optString("key", name));
@@ -178,8 +195,11 @@ final class RaySocket {
             if (code == 0) return message("result", "ok", false);
             if (code == 3) name = "launcher.home";
             else if (!RayLauncherActivity.isHomeActive() || code >= 85) {
-                boolean applied = (code == 23) ? RayGlobalControl.tap(service) : RayGlobalControl.injectKey(service, code);
-                return message("result", "ok", applied);
+                // OK clicks under the air-mouse pointer when it is showing, otherwise it is the D-pad centre
+                boolean applied = code == 23 && RayGlobalControl.state(service).optBoolean("pointerActive")
+                        ? RayGlobalControl.tap(service) : RayGlobalControl.injectKey(service, code);
+                return applied ? message("result", "ok", true)
+                        : message("result", "ok", false, "error", DimAccessibilityService.instance == null ? "accessibility" : "unsupported");
             }
         }
         if (name.equals("remote.delta")) { // relative motion: summed (never latest-wins), moved once per vsync
@@ -222,6 +242,7 @@ final class RaySocket {
             }
             else if (name.equals("vpn.open")) payload.put("type", "vpn.open").put("package", request.optString("pkg", request.optString("package", "")));
             else if (name.equals("weather.consent")) payload.put("type", "weather.consent").put("accepted", request.optBoolean("accepted"));
+            else if (name.equals("music.set")) payload.put("type", "music.set").put("on", request.opt("on"));
             else if (name.equals("launcher.home") || name.equals("home") || name.equals("apps")) payload.put("type", "launcher.home");
             else payload.put("type", "remote.key").put("key", keyName(request.optString("key", name)));
         } catch (org.json.JSONException e) {
@@ -327,6 +348,7 @@ final class RaySocket {
                     data = RayLauncherActivity.rayState(service);
                     data.put("filter", new JSONObject(service.stateJson()));
                     data.put("audio", new JSONObject(service.audioJson()));
+                    data.put("debug", RayDebug.state(service));
                 } catch (Exception ignored) { data = new JSONObject(); }
                 result[0] = data;
             }

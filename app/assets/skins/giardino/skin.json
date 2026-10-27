@@ -3,7 +3,7 @@
   "id": "giardino",
   "name": {
     "it": "Giardino zen",
-    "en": "Zen garden"
+    "en": "Zen garden", "de": "Zen-Garten", "fr": "Jardin zen", "es": "Jardín zen"
   },
   "author": "RAY",
   "accent": "#a8c97a",

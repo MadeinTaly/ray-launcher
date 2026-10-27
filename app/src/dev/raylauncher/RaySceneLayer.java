@@ -29,17 +29,22 @@ final class RaySceneLayer extends FrameLayout implements Runnable {
     private final Rect full = new Rect(0, 0, W, H);
     private final Paint fade = new Paint();
     private Bitmap landscape;
+    /** Behind the cards when there is no picture: a skin with a frame is full, nothing of a landscape shows. */
+    private int base = Color.BLACK;
     private long lastUpload;
     private boolean queued;
 
-    RaySceneLayer(Context context, RayFluidBackdrop backdrop) {
+    RaySceneLayer(Context context, RayFluidBackdrop backdrop) { this(context, backdrop, true, Color.BLACK); }
+
+    RaySceneLayer(Context context, RayFluidBackdrop backdrop, boolean picture, int base) {
         super(context);
         this.backdrop = backdrop;
+        this.base = base;
         setWillNotDraw(false);
         fade.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_OUT));
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inPreferredConfig = Bitmap.Config.RGB_565;
-        try (InputStream stream = context.getAssets().open("ray-landscape.jpg")) {
+        if (picture) try (InputStream stream = context.getAssets().open("ray-landscape.jpg")) {
             landscape = BitmapFactory.decodeStream(stream, null, options);
         } catch (Exception ignored) { }
     }
@@ -97,6 +102,7 @@ final class RaySceneLayer extends FrameLayout implements Runnable {
         Bitmap scene = Bitmap.createBitmap(W, H, Bitmap.Config.RGB_565);
         Canvas canvas = new Canvas(scene);
         if (landscape != null) canvas.drawBitmap(landscape, null, full, null);
+        else canvas.drawColor(base);
         canvas.scale((float) W / getWidth(), (float) H / getHeight());
         super.dispatchDraw(canvas);
         backdrop.setScene(scene);

@@ -1,15 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="dev.raylauncher"
-    android:versionCode="31"
-    android:versionName="0.2.0-beta.1">
+    android:versionCode="32"
+    android:versionName="0.3.0-beta.1">
 
-    <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="28" />
+    <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35" />
 
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.READ_TV_LISTINGS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- Android 14+: the always-on service (screen filter overlay + local remote server) fits no predefined type. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!-- Android 11+ package visibility: a launcher lists and starts every installed app. -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- Local-network remote server, and the optional weather lookup (only after consent). -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -87,7 +91,11 @@
         <service
             android:name="dev.raylauncher.DimService"
             android:exported="true"
-            android:permission="android.permission.DUMP" />
+            android:foregroundServiceType="specialUse"
+            android:permission="android.permission.DUMP">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Screen filter overlay and local-network remote control server" />
+        </service>
 
         <!-- Optional: lets the overlay be drawn as an accessibility overlay (full darkness, no touch blocking). -->
         <service

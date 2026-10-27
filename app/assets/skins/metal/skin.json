@@ -1,7 +1,7 @@
 {
   "format": 1,
   "id": "metal",
-  "name": {"it": "Metallo", "en": "Metal"},
+  "name": {"it": "Metallo", "en": "Metal", "de": "Metall", "fr": "Métal", "es": "Metal"},
   "author": "RAY",
   "accent": "#ff9a1f",
   "frame": "frame.webp",

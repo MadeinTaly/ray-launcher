@@ -53,9 +53,9 @@ public class MainActivity extends Activity
     private Slider temp;
     private boolean ready;
 
-    /** UI language: Italian on Italian devices, English otherwise. */
+    /** UI language: see I18n. */
     static String t(String en, String it) {
-        return "it".equals(Locale.getDefault().getLanguage()) ? it : en;
+        return I18n.t(en, it);
     }
 
     // Palette (same as the phone page): primary, accent, light, background, surface.
@@ -73,6 +73,7 @@ public class MainActivity extends Activity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        I18n.init(this);
         if (!Compat.isTv(this)) {
             startActivity(new Intent(this, PhoneActivity.class));
             finish();
@@ -188,6 +189,7 @@ public class MainActivity extends Activity
         screen.addView(timeline, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(68)));
 
         Fonts.apply(screen); // same typeface as the phone app
+        Compat.padForSystemBars(screen);
         setContentView(screen);
         refreshRemote();
         enabled.requestFocus();

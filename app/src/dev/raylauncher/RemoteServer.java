@@ -239,6 +239,8 @@ final class RemoteServer extends Thread {
         } else if (loopback && path.startsWith("/d/")) {
             if (!keyMatches(key)) send(out, 403, "application/json", "{\"error\":\"pairing key\"}");
             else AppApi.forward(prefs(), path, method, body, read, out);
+        } else if (path.equals("/mcp")) {
+            mcp(out, method, headers, key, body, read);
         } else if (path.startsWith("/api/")) {
             if (!keyMatches(key)) {
                 send(out, 403, "application/json", "{\"error\":\"pairing key\"}");
@@ -311,6 +313,25 @@ final class RemoteServer extends Thread {
             }
         } else {
             send(out, 404, "text/plain", "not found");
+        }
+    }
+
+    /** MCP over Streamable HTTP: POST one JSON-RPC message, the answer comes back as JSON (RayMcp). */
+    private void mcp(OutputStream out, String method, java.util.Map<String, String> headers, String key, byte[] body, int read) throws IOException {
+        String auth = headers.get("authorization");
+        if (key == null && auth != null && auth.startsWith("Bearer ")) key = auth.substring(7).trim();
+        if (!keyMatches(key)) { send(out, 403, "application/json", "{\"error\":\"pairing key\"}"); return; }
+        if (!RayMcp.enabled(service)) {
+            send(out, 403, "application/json", "{\"error\":\"MCP is off: turn it on in RAY settings on the TV\"}");
+            return;
+        }
+        if (!method.equals("POST")) { send(out, 405, "application/json", "{\"error\":\"POST only, no SSE stream\"}", "Allow: POST"); return; }
+        try {
+            JSONObject reply = RayMcp.handle(service, main, new JSONObject(new String(body, 0, read, StandardCharsets.UTF_8)));
+            if (reply == null) send(out, 202, "application/json", new byte[0]);
+            else send(out, 200, "application/json", reply.toString());
+        } catch (JSONException e) {
+            send(out, 400, "application/json", "{\"jsonrpc\":\"2.0\",\"id\":null,\"error\":{\"code\":-32700,\"message\":\"parse error\"}}");
         }
     }
 
@@ -389,7 +410,7 @@ final class RemoteServer extends Thread {
 
     /** extraHeader: one more "Name: value" header line, or null. */
     static void send(OutputStream out, int code, String type, byte[] b, String extraHeader) throws IOException {
-        String status = code == 200 ? "OK" : code == 403 ? "Forbidden" : code == 404 ? "Not Found" : code == 400 ? "Bad Request" : code == 502 ? "Bad Gateway" : "Error";
+        String status = code == 200 ? "OK" : code == 202 ? "Accepted" : code == 405 ? "Method Not Allowed" : code == 403 ? "Forbidden" : code == 404 ? "Not Found" : code == 400 ? "Bad Request" : code == 502 ? "Bad Gateway" : "Error";
         String head = "HTTP/1.1 " + code + " " + status + "\r\n"
                 + "Content-Type: " + type + "\r\n"
                 + "Content-Length: " + b.length + "\r\n"

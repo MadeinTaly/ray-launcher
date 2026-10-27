@@ -30,7 +30,9 @@ cp -r vendor/dayrhythm/src "$OUT/assets/dayrhythm/src"
 javac -source 8 -target 8 -nowarn -Xlint:-options -bootclasspath "$ANDROID_JAR" -d "$OUT/classes" \
     $(find app/src -name '*.java')
 if [ -n "$BUILD_TOOLS" ]; then
-    "$(win d8)" --min-api 26 --lib "$ANDROID_JAR" --output "$OUT" $(find "$OUT/classes" -name '*.class')
+    # one jar instead of every .class file: d8.bat on Windows has a command line limit
+    (cd "$OUT/classes" && jar cf ../classes.jar .)
+    "$(win d8)" --min-api 26 --lib "$ANDROID_JAR" --output "$OUT" "$OUT/classes.jar"
 else
     DX=${DX:-$(command -v dalvik-exchange || command -v dx)}
     "$DX" --dex --output="$OUT/classes.dex" "$OUT/classes"

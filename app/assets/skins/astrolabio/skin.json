@@ -1,7 +1,7 @@
 {
   "format": 1,
   "id": "astrolabio",
-  "name": {"it": "Astrolabio", "en": "Astrolabe"},
+  "name": {"it": "Astrolabio", "en": "Astrolabe", "de": "Astrolabium", "fr": "Astrolabe", "es": "Astrolabio"},
   "author": "RAY",
   "accent": "#ffc35a",
   "frame": "frame.webp",

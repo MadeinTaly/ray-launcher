@@ -1,7 +1,7 @@
 {
   "format": 1,
   "id": "notturna",
-  "name": {"it": "Notturna", "en": "Night meadow"},
+  "name": {"it": "Notturna", "en": "Night meadow", "de": "Nachtwiese", "fr": "Prairie nocturne", "es": "Prado nocturno"},
   "author": "RAY",
   "accent": "#ffc857",
   "weatherColor": "#2a1636",

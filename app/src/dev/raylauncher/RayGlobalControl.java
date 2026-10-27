@@ -77,8 +77,35 @@ final class RayGlobalControl {
     static boolean injectKey(Context context, int keyCode) {
         int linuxCode = keyCode;
         if (!allowedKey(linuxCode)) return false;
+        if (keyCode >= 85) { // media keys reach the active session through the audio service, no permission needed
+            android.media.AudioManager am = (android.media.AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+            if (am != null) {
+                am.dispatchMediaKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, keyCode));
+                am.dispatchMediaKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, keyCode));
+                return true;
+            }
+        }
+        if (globalAction(keyCode)) return true;
         initialize(context);
         return runRootCommand("keyevent " + linuxCode);
+    }
+
+    /**
+     * Back and Home through RAY's accessibility service, and on Android 13+ the D-pad too (GLOBAL_ACTION_DPAD_*):
+     * the remote then works over other apps without root.
+     */
+    static boolean globalAction(int keyCode) {
+        DimAccessibilityService a11y = DimAccessibilityService.instance;
+        if (a11y == null) return false;
+        int action = keyCode == 4 ? 1 : keyCode == 3 ? 2 : 0; // GLOBAL_ACTION_BACK, GLOBAL_ACTION_HOME
+        if (Build.VERSION.SDK_INT >= 33) {
+            if (keyCode == 19) action = 16;      // GLOBAL_ACTION_DPAD_UP
+            else if (keyCode == 20) action = 17; // DPAD_DOWN
+            else if (keyCode == 21) action = 18; // DPAD_LEFT
+            else if (keyCode == 22) action = 19; // DPAD_RIGHT
+            else if (keyCode == 23) action = 20; // DPAD_CENTER
+        }
+        return action != 0 && a11y.performGlobalAction(action);
     }
 
     static boolean tap(Context context) {

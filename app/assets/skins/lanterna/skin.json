@@ -1,7 +1,7 @@
 {
   "format": 1,
   "id": "lanterna",
-  "name": {"it": "Lanterna magica", "en": "Magic lantern"},
+  "name": {"it": "Lanterna magica", "en": "Magic lantern", "de": "Laterna magica", "fr": "Lanterne magique", "es": "Linterna mágica"},
   "author": "RAY",
   "accent": "#ffb347",
   "frame": "frame.webp",

@@ -123,7 +123,11 @@ final class RayWallpaper {
         Canvas canvas = new Canvas(scene);
         Bitmap wp = cover(c, W, H, Bitmap.Config.ARGB_8888);
         float boost = 0;
-        if (wp == null) defaultGradient(canvas, skin.wpDefault);
+        Bitmap art = wp == null ? defaultImage(c, skin) : null;
+        if (art != null) {
+            canvas.drawBitmap(art, null, new android.graphics.Rect(0, 0, W, H), new Paint(Paint.FILTER_BITMAP_FLAG));
+            art.recycle();
+        } else if (wp == null) defaultGradient(canvas, skin.wpDefault);
         else {
             Bitmap small = null;
             try {
@@ -236,6 +240,20 @@ final class RayWallpaper {
         return new LinearGradient(x0, y0, x1, y1, colors, pos, Shader.TileMode.CLAMP);
     }
 
+    /** wallpaperDefault.image: a picture shipped in the skin (wallpaper.webp, -day or -night), drawn instead of the gradient. */
+    private static Bitmap defaultImage(Context c, RaySkin skin) {
+        String name = skin.wpDefault == null ? "" : skin.wpDefault.optString("image");
+        if (!name.matches("wallpaper(-day|-night)?\\.webp")) return null;
+        try (java.io.InputStream in = skin.open(c, name)) {
+            android.graphics.BitmapFactory.Options o = new android.graphics.BitmapFactory.Options();
+            o.inPreferredConfig = Bitmap.Config.ARGB_8888;
+            return android.graphics.BitmapFactory.decodeStream(in, null, o);
+        } catch (java.io.IOException | RuntimeException | OutOfMemoryError e) {
+            Log.w(TAG, "skin wallpaper " + name + ": " + e);
+            return null;
+        }
+    }
+
     /** wallpaperDefault: linear gradient at `angle` degrees, elliptical glows and optional mountain silhouettes. */
     private static void defaultGradient(Canvas canvas, JSONObject d) {
         int[] cols = {0xff16213f, 0xff2a2c58, 0xff5b3a62, 0xffb5584f};
@@ -280,6 +298,73 @@ final class RayWallpaper {
             mountain(canvas, ridge, parse(mt.optString(0), 0xccffffff));
             if (mt.length() > 1) mountain(canvas, ridge2, parse(mt.optString(1), 0xccffffff));
         }
+        JSONObject hz = d == null ? null : d.optJSONObject("horizon");
+        if (hz != null) horizon(canvas, hz);
+        double grain = d == null ? 0 : d.optDouble("grain", 0);
+        if (grain > 0) grain(canvas, (float) Math.min(.2, grain));
+    }
+
+    /**
+     * horizon: {y, land, lines, lights, count} - a low flat land, long faint wind lines above it and a far row of
+     * lit points along it. Seeded, so the same skin always draws the same night.
+     */
+    private static void horizon(Canvas canvas, JSONObject hz) {
+        float y = (float) Math.max(.3, Math.min(.98, hz.optDouble("y", .82))) * H;
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
+        java.util.Random r = new java.util.Random(7);
+        int line = parse(hz.optString("lines"), 0);
+        if (line != 0) {
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(1.2f);
+            Path path = new Path();
+            for (int i = 0; i < 9; i++) {
+                float y0 = y * (.3f + .65f * r.nextFloat()), amp = 6 + 18 * r.nextFloat(), x0 = -W * .1f + W * .5f * r.nextFloat();
+                path.reset();
+                path.moveTo(x0, y0);
+                path.cubicTo(x0 + W * .3f, y0 - amp, x0 + W * .6f, y0 + amp, x0 + W * 1.1f, y0 - amp / 2);
+                p.setColor(Color.argb(Math.round(Color.alpha(line) * (.35f + .65f * r.nextFloat())), Color.red(line), Color.green(line), Color.blue(line)));
+                canvas.drawPath(path, p);
+            }
+            p.setStyle(Paint.Style.FILL);
+        }
+        int land = parse(hz.optString("land"), 0);
+        if (land != 0) {
+            p.setShader(new LinearGradient(0, y - 8, 0, y + 24, land & 0xffffff, land, Shader.TileMode.CLAMP));
+            canvas.drawRect(0, y - 8, W, H, p);
+            p.setShader(null);
+        }
+        int lights = parse(hz.optString("lights"), 0);
+        if (lights != 0) {
+            float[] towns = {.47f, .61f, .78f, .9f};
+            int n = Math.max(0, Math.min(120, hz.optInt("count", 40)));
+            for (int i = 0; i < n; i++) {
+                float x = (towns[r.nextInt(towns.length)] + (float) r.nextGaussian() * .025f) * W, ly = y + 2 - 4 * r.nextFloat();
+                float bright = .45f + .55f * r.nextFloat();
+                p.setShader(new RadialGradient(x, ly, 7, Color.argb(Math.round(70 * bright), Color.red(lights), Color.green(lights), Color.blue(lights)),
+                        lights & 0xffffff, Shader.TileMode.CLAMP));
+                canvas.drawCircle(x, ly, 7, p);
+                p.setShader(null);
+                p.setColor(Color.argb(Math.round(235 * bright), Color.red(lights), Color.green(lights), Color.blue(lights)));
+                canvas.drawCircle(x, ly, .9f + .6f * r.nextFloat(), p);
+            }
+        }
+    }
+
+    /** Fine film grain: light and dark specks at `amount` opacity, so a flat gradient does not band or look rendered. */
+    private static void grain(Canvas canvas, float amount) {
+        java.util.Random r = new java.util.Random(3);
+        int n = W * H / 6;
+        float[] light = new float[n], dark = new float[n];
+        for (int i = 0; i < n; i += 2) {
+            light[i] = r.nextInt(W); light[i + 1] = r.nextInt(H);
+            dark[i] = r.nextInt(W); dark[i + 1] = r.nextInt(H);
+        }
+        Paint p = new Paint();
+        p.setStrokeWidth(1);
+        p.setColor(Color.argb(Math.round(255 * amount), 255, 255, 255));
+        canvas.drawPoints(light, p);
+        p.setColor(Color.argb(Math.round(255 * amount), 0, 0, 0));
+        canvas.drawPoints(dark, p);
     }
 
     private static void mountain(Canvas canvas, float[][] pts, int color) {

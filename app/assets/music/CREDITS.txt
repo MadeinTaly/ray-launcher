@@ -1,0 +1,7 @@
+Background music for the RAY home screen. All three tracks are CC0 1.0 (public domain dedication,
+https://creativecommons.org/publicdomain/zero/1.0/); credit is not required but given here with thanks.
+They were loudness-normalised to -20 LUFS and re-encoded to Vorbis q2 for size.
+
+heavenly.ogg    "Heavenly Loop" by isaiah658          https://opengameart.org/node/76208
+slowstride.ogg  "Slow Stride" by isaiah658            https://opengameart.org/content/slow-stride
+calmtrack.ogg   "Calm Track" by pmiller               https://opengameart.org/node/98635

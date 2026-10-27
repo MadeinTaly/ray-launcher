@@ -24,6 +24,17 @@ final class Compat {
         }
     }
 
+    /** Android 15 draws apps edge to edge: keep the content clear of the status and navigation bars. */
+    static void padForSystemBars(android.view.View view) {
+        final int l = view.getPaddingLeft(), t = view.getPaddingTop(), r = view.getPaddingRight(), b = view.getPaddingBottom();
+        view.setOnApplyWindowInsetsListener(new android.view.View.OnApplyWindowInsetsListener() {
+            @Override public android.view.WindowInsets onApplyWindowInsets(android.view.View v, android.view.WindowInsets in) {
+                v.setPadding(l + in.getSystemWindowInsetLeft(), t + in.getSystemWindowInsetTop(), r + in.getSystemWindowInsetRight(), b + in.getSystemWindowInsetBottom());
+                return in;
+            }
+        });
+    }
+
     /** Touches pass through overlays with window alpha up to this value (Android 12+). */
     static float maxObscuringOpacity(Context context) {
         try {

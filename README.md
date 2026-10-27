@@ -26,7 +26,10 @@ network, except for an optional weather lookup that stays off until you consent.
 - **Multiple devices**: the phone app finds TVs on the network (mDNS), keeps the ones you paired and can copy
   settings to several of them.
 - **Optional weather** on the home screen, off until you accept a consent dialog (see Privacy).
-- English and Italian.
+- **Optional background music** on the home screen, asked once at first start: three CC0 tracks from
+  OpenGameArt (credits in [`app/assets/music/CREDITS.txt`](app/assets/music/CREDITS.txt)).
+- English, Italian, German, French and Spanish. Other languages: add `app/assets/i18n/<language>.json`
+  (English text to translation), see the existing files.
 
 ## Install
 
@@ -48,12 +51,8 @@ git clone --recurse-submodules https://github.com/MadeinTaly/ray-launcher.git
 cd ray-launcher
 ```
 
-Debian / Ubuntu:
-
-```sh
-sudo apt install openjdk-17-jdk-headless dalvik-exchange aapt zipalign apksigner android-sdk-platform-23
-./build.sh
-```
+The manifest targets API 35 and needs an `android.jar` of API 34 or newer, so the Debian `android-sdk-platform-23`
+package is no longer enough: use the Android SDK.
 
 With the Android SDK (Linux, macOS, or Windows with Git Bash):
 
@@ -113,6 +112,20 @@ picture but cannot lower the real backlight. Android 12+ limits the opacity of o
 enable RAY in Settings > Accessibility for full darkness (and for the screensaver, which is drawn above
 normal overlays). The accessibility service only lends its window to draw the overlay: it does not read the
 screen or your input.
+
+## AI assistants (MCP)
+
+RAY can expose an [MCP](https://modelcontextprotocol.io) endpoint so an assistant such as Claude Code can drive
+the TV: open apps, press keys, change the skin, the screen filter and the background music, read the state and a
+debug log. It is off by default: turn it on in RAY > Settings > AI assistants (MCP) on the TV, which shows the
+line to paste:
+
+```sh
+claude mcp add --transport http ray http://TV_IP:8766/mcp --header "X-Key: PAIRING_KEY"
+```
+
+It uses the pairing key like the rest of the API and plain HTTP on the local network, so anyone with the key on
+your Wi-Fi can do what the phone remote can. Settings > Debug panel shows the commands as they arrive.
 
 ## Screenshots
 

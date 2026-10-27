@@ -51,15 +51,14 @@ final class RayStockHero extends View {
         artCanvas = new Canvas(art);
         mask.setXfermode(dstIn);
         dst.set(0, 0, art.getWidth(), art.getHeight());
-        eyebrowP.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
-        eyebrowP.setTextSize(12 * u);
-        eyebrowP.setLetterSpacing(.133f);
+        eyebrowP.setTypeface(Fonts.bold(context));
+        eyebrowP.setTextSize(14 * u);
         eyebrowP.setColor(skin.mutedColor);
-        titleP.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
-        titleP.setTextSize(40 * u);
-        titleP.setLetterSpacing(-.01f);
+        titleP.setTypeface(Fonts.display(context, 400));
+        titleP.setTextSize(46 * u);
+        titleP.setLetterSpacing(-.035f);
         titleP.setColor(skin.textColor);
-        metaP.setTypeface(Typeface.create("sans-serif", Typeface.NORMAL));
+        metaP.setTypeface(Fonts.regular(context));
         metaP.setTextSize(14 * u);
         metaP.setColor(skin.mutedColor);
     }
@@ -88,7 +87,7 @@ final class RayStockHero extends View {
             artCanvas.drawRect(0, 0, aw, ah, mask);
         }
         int tw = Math.round(w * .40f);
-        eyebrow = eyebrowText == null || eyebrowText.isEmpty() ? null : layout(eyebrowText.toUpperCase(Locale.getDefault()), eyebrowP, tw, 1);
+        eyebrow = eyebrowText == null || eyebrowText.isEmpty() ? null : layout(eyebrowText, eyebrowP, tw, 1);
         title = layout(titleText == null ? "" : titleText, titleP, tw, 2);
         meta = metaText == null || metaText.isEmpty() ? null : layout(metaText, metaP, tw - Math.round(140 * u), 1);
         this.progress = progress;

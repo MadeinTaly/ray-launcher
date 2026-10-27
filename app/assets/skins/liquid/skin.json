@@ -1,7 +1,7 @@
 {
   "format": 1,
   "id": "liquid",
-  "name": {"it": "Liquida", "en": "Liquid"},
+  "name": {"it": "Liquida", "en": "Liquid", "de": "Flüssig", "fr": "Liquide", "es": "Líquida"},
   "author": "RAY",
   "accent": "#24dcff",
   "frame": "frame.webp",

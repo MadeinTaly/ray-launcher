@@ -34,14 +34,24 @@ final class RayFluidBackdrop extends GLSurfaceView implements Runnable {
             + "void main(){vUv=aUv;gl_Position=vec4(aPosition,0.0,1.0);}";
     private static final String FRAGMENT =
             "precision mediump float; varying vec2 vUv;"
-            + "uniform sampler2D uScene,uShell; uniform vec2 uSize; uniform float uTime,uDay,uStyle; uniform vec3 uColor;"
+            + "uniform sampler2D uScene,uShell; uniform vec2 uSize; uniform float uTime,uDay,uStyle,uAlive; uniform vec3 uColor;"
             + "void main(){"
             + "vec2 uv=vUv; vec2 inset=vec2(0.5)/uSize;"
             + "vec3 scene=texture2D(uScene,uv).rgb;"
             + "if(uStyle>6.5){gl_FragColor=vec4(scene,1.0);return;}"
             + "vec3 sceneTone=mix(vec3(0.68,0.76,0.88),vec3(1.0),uDay);scene*=sceneTone;"
             + "if(uStyle>2.5&&uStyle<3.5){gl_FragColor=vec4(scene,1.0);return;}"
-            + "if(uStyle>5.5){vec4 k=texture2D(uShell,uv);gl_FragColor=vec4(scene*(1.0-k.a)+k.rgb*mix(0.75,1.0,uDay),1.0);return;}"
+            + "if(uStyle>5.5){vec2 q=uv;vec2 ap=uv*vec2(uSize.x/uSize.y,1.0);"
+            // slow and broad (the slowest speed that still loops at the 5*pi wrap): the frame breathes, it does not wobble
+            + "if(uAlive>0.5){vec2 w=vec2(sin(ap.y*2.5+uTime*1.2)+0.6*sin(ap.x*3.5-uTime*0.8),cos(ap.x*2.0-uTime*0.8)+0.6*cos(ap.y*4.0+uTime*1.2));"
+            + "q=clamp(uv+w*3.0/uSize,inset,1.0-inset);}"
+            + "vec4 k=texture2D(uShell,q);vec3 col=k.rgb;"
+            + "if(uAlive>0.5){float lit=smoothstep(0.12,0.6,max(col.r,max(col.g,col.b))-min(col.r,min(col.g,col.b)));"
+            // a broad band of light drifting across, with soft curtains inside it
+            + "float wave=0.5+0.5*sin(dot(ap,vec2(1.6,0.7))-uTime*1.6);"
+            + "float curtain=0.5+0.5*sin(ap.x*8.0+1.5*sin(ap.y*2.0+uTime*0.8)-uTime*2.0);"
+            + "col*=1.0+lit*(1.2*wave*(0.7+0.3*curtain)-0.3);}"
+            + "gl_FragColor=vec4(scene*(1.0-k.a)+col*mix(0.75,1.0,uDay),1.0);return;}"
             + "vec2 p=uv*vec2(uSize.x/uSize.y,1.0);"
             + "float a=dot(p,vec2(18.0,10.0))-uTime*1.6;"
             + "float b=dot(p,vec2(9.0,-21.0))+uTime*0.8;"
@@ -83,6 +93,8 @@ final class RayFluidBackdrop extends GLSurfaceView implements Runnable {
     private volatile int themeStyle;
     private volatile String shellAsset = "ray-fluid-shell.png";
     private volatile String skinShell;
+    /** Skin frame drawn as it is (style 6) but breathing: see the shader. */
+    private volatile boolean alive;
     private volatile float animationTime;
     private boolean resumed, running, released;
     private long animationStarted;
@@ -126,8 +138,11 @@ final class RayFluidBackdrop extends GLSurfaceView implements Runnable {
         requestRender();
     }
 
-    void setTheme(int color, int style, String skinShell) {
+    void setTheme(int color, int style, String skinShell) { setTheme(color, style, skinShell, false); }
+
+    void setTheme(int color, int style, String skinShell, boolean alive) {
         this.skinShell = skinShell;
+        this.alive = alive;
         style = Math.max(0, Math.min(7, style));
         int selectedColor = color;
         float[] hsv = new float[3];
@@ -169,7 +184,7 @@ final class RayFluidBackdrop extends GLSurfaceView implements Runnable {
 
     private void updateAnimationLoop() {
         removeCallbacks(this);
-        running = resumed && !released && themeStyle != 3 && themeStyle < 6
+        running = resumed && !released && themeStyle != 3 && (themeStyle < 6 || themeStyle == 6 && alive)
                 && Settings.Global.getFloat(getContext().getContentResolver(),
                 Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f;
         animationStarted = SystemClock.uptimeMillis() - (long) (animationTime * 1000f / SPEED);
@@ -215,7 +230,7 @@ final class RayFluidBackdrop extends GLSurfaceView implements Runnable {
     }
 
     @Override public void run() {
-        if (!running || released || themeStyle == 3 || themeStyle >= 6 || liquid.initializationFailed) {
+        if (!running || released || themeStyle == 3 || themeStyle > 6 || themeStyle == 6 && !alive || liquid.initializationFailed) {
             running = false;
             return;
         }
@@ -271,7 +286,7 @@ final class RayFluidBackdrop extends GLSurfaceView implements Runnable {
                 .order(ByteOrder.nativeOrder()).asFloatBuffer();
         private final int[] textures = new int[2];
         private int program, position, uv, sceneUniform, shellUniform, sizeUniform, timeUniform, dayUniform;
-        private int colorUniform, styleUniform, maxTextureSize;
+        private int colorUniform, styleUniform, aliveUniform = -1, maxTextureSize;
         private int width, height;
         private String loadedShell, lastShellFailure;
         private Bitmap.Config texConfig;
@@ -309,6 +324,7 @@ final class RayFluidBackdrop extends GLSurfaceView implements Runnable {
                 dayUniform = GLES20.glGetUniformLocation(program, "uDay");
                 colorUniform = GLES20.glGetUniformLocation(program, "uColor");
                 styleUniform = GLES20.glGetUniformLocation(program, "uStyle");
+                aliveUniform = GLES20.glGetUniformLocation(program, "uAlive"); // -1 in the static fallback: setting it is a no-op
                 if (position < 0 || uv < 0 || sceneUniform < 0 || shellUniform < 0 || dayUniform < 0
                         || colorUniform < 0 || styleUniform < 0)
                     throw new IllegalStateException("Required shader input missing");
@@ -453,6 +469,7 @@ final class RayFluidBackdrop extends GLSurfaceView implements Runnable {
             GLES20.glUniform3f(colorUniform, Color.red(color) / 255f,
                     Color.green(color) / 255f, Color.blue(color) / 255f);
             GLES20.glUniform1f(styleUniform, themeStyle);
+            GLES20.glUniform1f(aliveUniform, alive ? 1f : 0f);
             GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
             renderedFrames++;
             if (renderedFrames <= 2) {

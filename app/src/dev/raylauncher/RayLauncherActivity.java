@@ -106,7 +106,7 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
     private boolean stock;
     private float unit = 1;
     private RayStockHero stockHero;
-    private TextView dateView, connectSub, pillText, vpnBadge, weatherView;
+    private TextView dateView, connectSub, pillText, vpnBadge, weatherView, actionHint;
     private final ExecutorService weatherWorker = Executors.newSingleThreadExecutor();
     private final Runnable weatherUpdate = new Runnable() { @Override public void run() { updateWeather(); } };
     /** Every 30 min (and on resume): fetch off the UI thread, then repaint. RayWeather.refresh skips a fresh cache. */
@@ -131,6 +131,7 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
     private TextView connectText;
     private String connectUrl;
     private boolean connectedShown;
+    private String connectShownAs;
     private int connectFullHeight;
     private RayFluidBackdrop backdrop;
     private AlertDialog showingDialog;
@@ -148,6 +149,7 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        I18n.init(this);
         getPackageManager().setComponentEnabledSetting(
                 new android.content.ComponentName(getPackageName(), getPackageName() + ".RayHome"),
                 Compat.isTv(this) ? PackageManager.COMPONENT_ENABLED_STATE_ENABLED : PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
@@ -183,10 +185,19 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
         updateWeather();
         main.removeCallbacks(weatherTick);
         weatherTick.run();
-        requestWatchHistoryPermission();
+        boolean asking = requestWatchHistoryPermission();
+        if (RayAmbient.enabled(this)) RayAmbient.start(this);
+        else if (!asking && !RayAmbient.asked(this) && showingDialog == null) askMusic();
         refreshApps();
         run();
+        RayDebug.attach(this, root);
         RaySocket.stateChanged();
+    }
+
+    /** The debug pref changed (RayDebug.set): show or hide the panel now. */
+    static void debugChanged() {
+        RayLauncherActivity a = active;
+        if (a != null && a.root != null) RayDebug.attach(a, a.root);
     }
 
     @Override
@@ -204,17 +215,57 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
                 && grantResults[0] == PackageManager.PERMISSION_GRANTED) refreshApps();
     }
 
-    private void requestWatchHistoryPermission() {
+    /** True when the system question is now on screen. */
+    private boolean requestWatchHistoryPermission() {
         if (Build.VERSION.SDK_INT < 23 || checkSelfPermission(READ_TV_LISTINGS) == PackageManager.PERMISSION_GRANTED
-                || prefs.getBoolean("ray_watch_history_permission_asked", false)) return;
+                || prefs.getBoolean("ray_watch_history_permission_asked", false)) return false;
         prefs.edit().putBoolean("ray_watch_history_permission_asked", true).apply();
         requestPermissions(new String[]{READ_TV_LISTINGS}, REQUEST_WATCH_HISTORY_PERMISSION);
+        return true;
+    }
+
+    /**
+     * First run: background music on or off. The focus is the preview: on "On" it plays, on "Off" it stops, so the
+     * choice is made by ear. It starts on "Off", silent.
+     */
+    private void askMusic() {
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle(copy("Background music", "Musica di sottofondo"))
+                .setMessage(copy("A very quiet ambient sound while the home is on screen. Move to On to hear it.",
+                        "Un suono ambient leggerissimo mentre sei nella home. Spostati su Sì per sentirlo."))
+                .setPositiveButton(copy("On", "Sì"), new android.content.DialogInterface.OnClickListener() {
+                    @Override public void onClick(android.content.DialogInterface d, int which) { setMusic(RayLauncherActivity.this, true); }
+                })
+                .setNegativeButton(copy("Off", "No"), new android.content.DialogInterface.OnClickListener() {
+                    @Override public void onClick(android.content.DialogInterface d, int which) { setMusic(RayLauncherActivity.this, false); }
+                }).setCancelable(false).create();
+        trackDialog(dialog);
+        showStyled(dialog);
+        Button on = dialog.getButton(AlertDialog.BUTTON_POSITIVE), off = dialog.getButton(AlertDialog.BUTTON_NEGATIVE);
+        final View.OnFocusChangeListener preview = new View.OnFocusChangeListener() {
+            @Override public void onFocusChange(View v, boolean has) {
+                if (!has) return;
+                if (v.getTag() == Boolean.TRUE) RayAmbient.start(v.getContext()); else RayAmbient.stop();
+            }
+        };
+        on.setTag(Boolean.TRUE);
+        on.setOnFocusChangeListener(preview);
+        off.setOnFocusChangeListener(preview);
+        off.requestFocus();
+    }
+
+    /** Saves the background music choice and applies it now (it only plays while the home is in front). */
+    static void setMusic(Context context, boolean on) {
+        RayAmbient.set(context, on);
+        if (on && active != null) RayAmbient.start(context); else if (!on) RayAmbient.stop();
+        RaySocket.stateChanged();
     }
 
     @Override
     protected void onPause() {
         if (active == this) active = null;
         if (backdrop != null) backdrop.stop();
+        RayAmbient.stop();
+        RayDebug.detach();
         main.removeCallbacks(this);
         main.removeCallbacks(weatherTick);
         appsGeneration++;
@@ -293,19 +344,19 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
             addAt(root, modeButton, width, height, skin.mode);
         }
         if (skin.pair != null) {
-            Button pairButton = button("Abbina");
+            Button pairButton = button(copy("Pair", "Abbina"));
             pairButton.setTag("pair");
             pairButton.setOnClickListener(this);
             pairButton.setOnFocusChangeListener(this);
             addAt(root, pairButton, width, height, skin.pair);
         }
 
-        resumeButton = button(copy("Riprendi", "Riprendi"));
+        resumeButton = button(copy("Resume", "Riprendi"));
         resumeButton.setTag("resume");
         resumeButton.setOnClickListener(this);
         resumeButton.setOnFocusChangeListener(this);
         addAt(root, resumeButton, width, height, skin.resume);
-        discoverButton = button(copy("Scopri", "Scopri"));
+        discoverButton = button(copy("Discover", "Scopri"));
         discoverButton.setTag("discover");
         discoverButton.setOnClickListener(this);
         discoverButton.setOnFocusChangeListener(this);
@@ -317,7 +368,8 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
             rowHeadings.add(heading);
             addAt(root, heading, width, height, rect);
         }
-        cardLayer = new RaySceneLayer(this, backdrop);
+        cardLayer = "none".equals(skin.wallpaper) ? new RaySceneLayer(this, backdrop, false, dayMode ? Color.rgb(214, 219, 214) : Color.rgb(8, 12, 14))
+                : new RaySceneLayer(this, backdrop);
         root.addView(cardLayer, new FrameLayout.LayoutParams(-1, -1));
         if (skin.hero != null) addHero(width, height);
 
@@ -456,7 +508,7 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
     private void addAction(int width, int height, String tag, float[] rect, float padLeft) {
         String title = "search".equals(tag) ? copy("Search", "Cerca") : "apps".equals(tag) ? copy("Your apps", "Le tue app")
                 : "sources".equals(tag) ? copy("Sources", "Sorgenti") : "audio".equals(tag) ? "Audio"
-                : "pair".equals(tag) ? "Abbina" : copy("Settings", "Impostazioni");
+                : "pair".equals(tag) ? copy("Pair", "Abbina") : copy("Settings", "Impostazioni");
         Button action = button(title);
         action.setTag(tag);
         action.setOnClickListener(this);
@@ -676,56 +728,53 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
     }
 
     private static String remaining(int minutes) {
-        return minutes >= 60 ? (minutes / 60) + "h " + String.format(Locale.ROOT, "%02d", minutes % 60) + "min" : minutes + "min";
+        String left = "it".equals(Locale.getDefault().getLanguage()) ? " rimanenti" : " left";
+        return (minutes >= 60 ? (minutes / 60) + "h " + String.format(Locale.ROOT, "%02d", minutes % 60) + "min" : minutes + "min") + left;
     }
 
     /** What the hero shows: the focused card; with nothing focused, the latest Watch Next entry or a greeting. */
     private void updateHero(Object item, boolean force) {
+        if (stock && item instanceof AppEntry) item = null; // frameless: the hero is for something to continue, not an app name
         if (item == null && !watchHistory.isEmpty() && category.equals("home")) item = watchHistory.get(0);
         if (!force && item == heroItem && item != null) return;
         heroItem = item;
-        String primary = "\u25b6  Riprendi";
+        String primary = "\u25b6  " + copy("Resume", "Riprendi");
         Object tag;
         if (item instanceof RayWatchHistory.Entry) {
             RayWatchHistory.Entry e = (RayWatchHistory.Entry) item;
             tag = e;
             AppEntry owner = findApp(e.packageName);
             String meta = owner == null ? "" : owner.name;
-            if (e.minutesLeft > 0) meta += (meta.isEmpty() ? "" : "  |  ") + remaining(e.minutesLeft) + " rimanenti";
+            if (e.minutesLeft > 0) meta += (meta.isEmpty() ? "" : "  |  ") + remaining(e.minutesLeft);
             int count = Math.min(watchHistory.size(), skin.rows[0].length);
             if (hero != null) hero.show(e.artwork, meta, e.title, e.description, count, Math.max(0, watchHistory.indexOf(e)));
-            if (stockHero != null) stockHero.show(e.artwork, (owner == null ? "" : owner.name + "  \u00b7  ") + copy("Continue watching", "Continua a guardare"),
-                    e.title, e.minutesLeft > 0 ? remaining(e.minutesLeft) + " rimanenti" : "", e.progress);
+            if (stockHero != null) stockHero.show(e.artwork, owner == null ? copy("Continue watching", "Continua a guardare") : owner.name,
+                    e.title, e.minutesLeft > 0 ? remaining(e.minutesLeft) : "", e.progress);
         } else if (item instanceof AppEntry) {
             AppEntry a = (AppEntry) item;
             tag = a.packageName;
-            primary = "\u25b6  Apri";
+            primary = "\u25b6  " + copy("Open", "Apri");
             if (hero != null) hero.show(blurred(a), "App", a.name, "", 0, 0);
             if (stockHero != null) stockHero.show(null, "App", a.name, "", -1);
         } else {
             AppEntry recent = findApp(prefs.getString("ray_recent", "").split("\\n", 2)[0]);
             tag = recent == null ? "resume" : recent.packageName;
-            if (recent == null) primary = "\u25b6  Le tue app";
-            resumeButton.setContentDescription(recent == null ? "Le tue app" : "Riprendi " + recent.name);
-            if (stockHero != null) {
-                int hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY);
-                stockHero.show(null, hour >= 5 && hour < 13 ? "Buongiorno" : hour >= 13 && hour < 18 ? "Buon pomeriggio"
-                        : hour >= 18 && hour < 23 ? "Buonasera" : "Buonanotte", copy("What shall we watch?", "Cosa guardiamo?"), "", -1);
-            }
+            if (recent == null) primary = "\u25b6  " + copy("Your apps", "Le tue app");
+            resumeButton.setContentDescription(recent == null ? copy("Your apps", "Le tue app") : copy("Resume ", "Riprendi ") + recent.name);
+            if (stockHero != null) stockHero.show(null, null, "", null, -1);
             if (hero != null) {
-                int hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY);
-                String hello = hour >= 5 && hour < 13 ? "Buongiorno" : hour >= 13 && hour < 18 ? "Buon pomeriggio"
-                        : hour >= 18 && hour < 23 ? "Buonasera" : "Buonanotte";
-                String date = new java.text.SimpleDateFormat("EEEE d MMMM", Locale.getDefault()).format(new java.util.Date());
+                String date = longDate();
                 if (!date.isEmpty()) date = Character.toUpperCase(date.charAt(0)) + date.substring(1);
-                hero.showGreeting(hello, date, android.text.format.DateFormat.getTimeFormat(this).format(new java.util.Date()));
+                hero.showGreeting(greeting(), date, android.text.format.DateFormat.getTimeFormat(this).format(new java.util.Date()));
             }
         }
         resumeButton.setText(primary);
         resumeButton.setTag(tag);
-        int secondary = item == null && "resume".equals(tag) ? View.GONE : View.VISIBLE; // would duplicate "Le tue app"
-        if (discoverButton.getVisibility() != secondary) {
+        int secondary = stock || item == null && "resume".equals(tag) ? View.GONE : View.VISIBLE; // would duplicate "Le tue app"
+        int primaryShown = stock && !(item instanceof RayWatchHistory.Entry) ? View.GONE : View.VISIBLE;
+        if (discoverButton.getVisibility() != secondary || resumeButton.getVisibility() != primaryShown) {
             discoverButton.setVisibility(secondary);
+            resumeButton.setVisibility(primaryShown);
             wireFocus();
         }
         if (item != null) resumeButton.setContentDescription(primary.substring(3) + " " + (item instanceof AppEntry
@@ -901,7 +950,7 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
 
     private View watchTile(RayWatchHistory.Entry item) {
         AppEntry owner = findApp(item.packageName);
-        String sub = item.minutesLeft > 0 ? remaining(item.minutesLeft) + " rimanenti" : owner == null ? "" : owner.name;
+        String sub = item.minutesLeft > 0 ? remaining(item.minutesLeft) : owner == null ? "" : owner.name;
         return card(item, item.artwork, null, false, item.title, sub, item.progress, true);
     }
 
@@ -917,9 +966,9 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
     /** Suggested action in a hole with no content: first "all apps", then search, pairing, settings, add apps. */
     private View placeholderTile(int n, boolean noApps) {
         String[] tags = {"ph:apps", "ph:search", "ph:pair", "ph:settings"};
-        String[] titles = {"Tutte le app", "Cerca", "Abbina il telefono", "Impostazioni"};
-        CardView tile = card(n < 4 ? tags[n] : "ph:add", null, null, false, n < 4 ? titles[n] : "Aggiungi app",
-                n == 0 && noApps ? "Nessuna app in questa categoria" : "", -1, true);
+        String[] titles = {copy("All apps", "Tutte le app"), copy("Search", "Cerca"), copy("Pair the phone", "Abbina il telefono"), copy("Settings", "Impostazioni")};
+        CardView tile = card(n < 4 ? tags[n] : "ph:add", null, null, false, n < 4 ? titles[n] : copy("Add apps", "Aggiungi app"),
+                n == 0 && noApps ? copy("No apps in this category", "Nessuna app in questa categoria") : "", -1, true);
         int accent = accent();
         tile.art.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR,
                 new int[]{Color.argb(120, Color.red(accent), Color.green(accent), Color.blue(accent)), Color.argb(235, 6, 12, 22)}));
@@ -967,7 +1016,7 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
         Button b = new Button(this);
         b.setAllCaps(false);
         b.setTransformationMethod(null);
-        b.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        b.setTypeface(Fonts.bold(this));
         b.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, 15 * unit);
         b.setIncludeFontPadding(false);
         b.setMinWidth(0); b.setMinimumWidth(0); b.setMinHeight(0); b.setMinimumHeight(0);
@@ -997,22 +1046,21 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
     }
 
     private void buildStock(int width, int height) {
-        Typeface light = Typeface.create("sans-serif-light", Typeface.NORMAL), reg = Typeface.create("sans-serif", Typeface.NORMAL),
-                med = Typeface.create("sans-serif-medium", Typeface.NORMAL);
+        Typeface reg = Fonts.regular(this), med = Fonts.bold(this);
         stockHero = new RayStockHero(this, skin, width, height);
         root.addView(stockHero, new FrameLayout.LayoutParams(-1, -1));
         cardLayer = new FrameLayout(this);
         cardLayer.setClipChildren(false);
         root.addView(cardLayer, new FrameLayout.LayoutParams(-1, -1));
-        clock = stockText("", 44, light, skin.textColor);
-        clock.setLetterSpacing(-.0114f);
+        clock = stockText("", 58, Fonts.display(this, 400), skin.textColor);
+        clock.setLetterSpacing(-.035f);
         addAt(root, clock, width, height, skin.clock);
         dateView = stockText("", 15, reg, skin.mutedColor);
-        addAt(root, dateView, width, height, new float[]{.05f, .126f, .24f, .04f});
+        addAt(root, dateView, width, height, new float[]{.05f, .14f, .3f, .04f});
         weatherView = stockText("", 15, reg, skin.mutedColor);
-        addAt(root, weatherView, width, height, new float[]{.05f, .163f, .3f, .04f});
+        addAt(root, weatherView, width, height, new float[]{.05f, .177f, .3f, .04f});
         for (float[] r : skin.rowTitles) {
-            TextView heading = stockText("", 17, med, skin.textColor);
+            TextView heading = stockText("", 19, Fonts.display(this, 500), skin.textColor);
             heading.setGravity(Gravity.CENTER_VERTICAL);
             rowHeadings.add(heading);
             addAt(root, heading, width, height, r);
@@ -1025,10 +1073,14 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
             a.setTag(tag);
             a.setOnClickListener(this);
             a.setOnFocusChangeListener(this);
-            a.setContentDescription("search".equals(tag) ? copy("Search", "Cerca") : "sources".equals(tag) ? copy("Sources", "Sorgenti") : copy("Settings", "Impostazioni"));
+            a.setContentDescription("search".equals(tag) ? copy("Search", "Cerca") : "sources".equals(tag) ? copy("TV inputs", "Ingressi TV") : copy("Settings", "Impostazioni"));
             tintShadow(a);
             addAt(root, a, width, height, skin.actionRects[i]);
         }
+        actionHint = stockText("", 13, Fonts.bold(this), skin.mutedColor);
+        actionHint.setGravity(Gravity.CENTER_HORIZONTAL);
+        actionHint.setVisibility(View.INVISIBLE);
+        addAt(root, actionHint, width, height, new float[]{0, skin.actionRects[0][1] + skin.actionRects[0][3] + .014f, .16f, .035f});
         resumeButton = stockButton("resume");
         discoverButton = stockButton("discover");
         discoverButton.setText(copy("Discover", "Scopri"));
@@ -1048,7 +1100,7 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
 
         // connect: the QR box, or a pill once a phone (or the VPN) is there
         connectPanel = new LinearLayout(this);
-        connectPanel.setGravity(Gravity.CENTER_VERTICAL | Gravity.END);
+        connectPanel.setGravity(Gravity.TOP | Gravity.END);
         qrRow = new LinearLayout(this);
         qrRow.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout col = new LinearLayout(this);
@@ -1068,6 +1120,7 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
         int qr = Math.round(72 * unit);
         connectQr.setBackground(roundRect(Color.WHITE, 10));
         connectQr.setPadding(Math.round(6 * unit), Math.round(6 * unit), Math.round(6 * unit), Math.round(6 * unit));
+        connectQr.setScaleType(ImageView.ScaleType.FIT_CENTER);
         connectQr.setElevation(8 * unit);
         tintShadow(connectQr);
         qrRow.addView(connectQr, new LinearLayout.LayoutParams(qr, qr));
@@ -1083,8 +1136,7 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
         LinearLayout.LayoutParams pt = new LinearLayout.LayoutParams(-2, -2);
         pt.leftMargin = Math.round(8 * unit);
         pill.addView(pillText, pt);
-        vpnBadge = stockText("VPN", 11, Typeface.create("sans-serif-medium", Typeface.BOLD), skin.mutedColor);
-        vpnBadge.setLetterSpacing(.07f);
+        vpnBadge = stockText("VPN", 11, Fonts.bold(this), skin.mutedColor);
         vpnBadge.setBackground(roundRect(skin.panelStrong, 12));
         vpnBadge.setPadding(Math.round(9 * unit), Math.round(4 * unit), Math.round(9 * unit), Math.round(4 * unit));
         LinearLayout.LayoutParams vl = new LinearLayout.LayoutParams(-2, -2);
@@ -1105,6 +1157,20 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
 
     private void updateStockConnect() {
         boolean phone = RaySocket.clientCount() > 0, vpn = RayVpn.state(this).optBoolean("active");
+        if (phone && !prefs.getBoolean("ray_paired_once", false)) prefs.edit().putBoolean("ray_paired_once", true).apply();
+        boolean big = !prefs.getBoolean("ray_paired_once", false);
+        int qr = Math.round((big ? 150 : 72) * unit);
+        if (connectQr.getLayoutParams().width != qr) {
+            // never paired: a big code with the words under it; afterwards the compact box beside them
+            qrRow.removeView(connectQr);
+            qrRow.addView(connectQr, big ? 0 : 1, new LinearLayout.LayoutParams(qr, qr));
+            qrRow.setOrientation(big ? LinearLayout.VERTICAL : LinearLayout.HORIZONTAL);
+            qrRow.setGravity(big ? Gravity.END : Gravity.CENTER_VERTICAL);
+            LinearLayout.LayoutParams cl = (LinearLayout.LayoutParams) qrRow.getChildAt(big ? 1 : 0).getLayoutParams();
+            cl.rightMargin = big ? 0 : Math.round(12 * unit);
+            cl.topMargin = big ? Math.round(12 * unit) : 0;
+            connectSub.setMaxWidth(Math.round((big ? 240 : 170) * unit));
+        }
         String url = phone ? null : pairingUrl();
         String signature = phone + "|" + vpn + "|" + url;
         if (signature.equals(connectUrl)) { connectPanel.setVisibility(View.VISIBLE); return; }
@@ -1135,18 +1201,22 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
         cardLayer.removeAllViews();
         ArrayList<Object> watch = new ArrayList<>(), items = new ArrayList<>();
         if (category.equals("home")) for (RayWatchHistory.Entry e : watchHistory) if (watch.size() < 10) watch.add(e);
-        for (AppEntry app : apps) if (categoryMatches(app, category)) items.add(app);
+        if (category.equals("home")) items.addAll(homeApps());
+        else for (AppEntry app : apps) if (categoryMatches(app, category)) items.add(app);
         DisplayMetrics dm = getResources().getDisplayMetrics();
         int w = dm.widthPixels, h = dm.heightPixels, gap = Math.round(.0125f * w), pad = Math.round(.05f * w), padV = Math.round(36 * unit);
         boolean top = !watch.isEmpty();
-        if (top) addStockRow(watch, .595f, 5, gap, pad, padV, w, h);
-        addStockRow(items, top ? .86f : .62f, top ? 8 : 6, gap, pad, padV, w, h);
+        if (top) {
+            addStockRow(watch, .595f, 5, gap, pad, padV, w, h);
+            addStockRow(items, .86f, 8, gap, pad, padV, w, h);
+        } else addStockGrid(items, GRID_TOP, 5, gap, pad, w, h);
         TextView first = rowHeadings.get(0), second = rowHeadings.get(1);
         first.setVisibility(top ? View.VISIBLE : View.GONE);
         first.setText(copy("Continue watching", "Continua a guardare"));
-        second.setText(category.equals("search") ? copy("Results", "Risultati") : "App");
+        second.setText(category.equals("search") ? copy("Results", "Risultati") : category.equals("home") ? copy("Recent", "Recenti")
+                : copy("All apps", "Tutte le app"));
         FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) second.getLayoutParams();
-        lp.topMargin = Math.round((top ? .81f : .57f) * h);
+        lp.topMargin = Math.round((top ? .81f : GRID_TOP - .06f) * h);
         second.setLayoutParams(lp);
         View target = null;
         if (oldTag != null) for (View t : appViews) if (oldTag.equals(t.getTag())) target = t;
@@ -1174,17 +1244,7 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
         row.setClipChildren(false);
         scroller.addView(row, new FrameLayout.LayoutParams(-2, -1));
         for (int i = 0; i < list.size(); i++) {
-            Object item = list.get(i);
-            CardView tile;
-            if (item instanceof RayWatchHistory.Entry) {
-                RayWatchHistory.Entry e = (RayWatchHistory.Entry) item;
-                AppEntry owner = findApp(e.packageName);
-                tile = stockCard(e, e.artwork, null, 0, e.title, e.minutesLeft > 0 ? remaining(e.minutesLeft) + " rimanenti" : owner == null ? "" : owner.name, e.progress, ch, true);
-            } else {
-                AppEntry a = (AppEntry) item;
-                tile = a.banner != null && !blank(a) ? stockCard(a.packageName, null, a.banner, tint(a), a.name, "", -1, ch, false)
-                        : stockCard(a.packageName, null, null, tint(a), a.name, "", -1, ch, false);
-            }
+            CardView tile = stockItemCard(list.get(i), ch);
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(cw, ch);
             lp.rightMargin = i < list.size() - 1 ? gap : 0;
             row.addView(tile, lp);
@@ -1193,6 +1253,107 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
             if (i < per) spot(tile, new float[]{(pad + i * (float) (cw + gap)) / w, topFrac, (float) cw / w, (float) ch / h});
         }
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(w, ch + 2 * padV);
+        lp.topMargin = Math.round(topFrac * h) - padV;
+        cardLayer.addView(scroller, lp);
+    }
+
+    private static final float GRID_TOP = .37f;
+
+    private static final int HOME_APPS = 9;
+
+    /** Pinned apps, then the most recently used (usage access if granted, else the launches from RAY), at most 9. */
+    private List<Object> homeApps() {
+        java.util.LinkedHashSet<String> order = new java.util.LinkedHashSet<>();
+        for (String p : prefs.getString("ray_pinned", "").split("\\n")) if (!p.isEmpty()) order.add(p);
+        order.addAll(usedRecently());
+        for (String p : prefs.getString("ray_recent", "").split("\\n")) if (!p.isEmpty()) order.add(p);
+        ArrayList<Object> out = new ArrayList<>();
+        for (String p : order) { AppEntry a = findApp(p); if (a != null && out.size() < HOME_APPS) out.add(a); }
+        for (AppEntry a : apps) if (out.size() < 5 && !out.contains(a)) out.add(a); // a new TV: never an empty home
+        out.add("ph:apps");
+        return out;
+    }
+
+    /** Packages used in the last 30 days, most recent first; empty without usage access. */
+    private List<String> usedRecently() {
+        ArrayList<String> out = new ArrayList<>();
+        try {
+            android.app.usage.UsageStatsManager u = (android.app.usage.UsageStatsManager) getSystemService(USAGE_STATS_SERVICE);
+            long now = System.currentTimeMillis();
+            List<android.app.usage.UsageStats> stats = u.queryUsageStats(android.app.usage.UsageStatsManager.INTERVAL_BEST, now - 30L * 86400000L, now);
+            Collections.sort(stats, new java.util.Comparator<android.app.usage.UsageStats>() {
+                @Override public int compare(android.app.usage.UsageStats a, android.app.usage.UsageStats b) { return Long.compare(b.getLastTimeUsed(), a.getLastTimeUsed()); }
+            });
+            for (android.app.usage.UsageStats st : stats)
+                if (st.getTotalTimeInForeground() > 0 && !st.getPackageName().equals(getPackageName()) && !out.contains(st.getPackageName())) out.add(st.getPackageName());
+        } catch (RuntimeException unavailable) { }
+        return out;
+    }
+
+    /** Long press (or Menu) on an app card: pins it to the start of the home, or unpins it. */
+    private void togglePin(String pkg) {
+        ArrayList<String> pinned = new ArrayList<>();
+        for (String p : prefs.getString("ray_pinned", "").split("\\n")) if (!p.isEmpty()) pinned.add(p);
+        boolean pin = !pinned.remove(pkg);
+        if (pin) pinned.add(0, pkg);
+        prefs.edit().putString("ray_pinned", android.text.TextUtils.join("\n", pinned)).apply();
+        AppEntry a = findApp(pkg);
+        android.widget.Toast.makeText(this, (a == null ? pkg : a.name) + ": " + (pin ? copy("pinned to the home", "fissata in home")
+                : copy("unpinned", "non pi\u00f9 fissata")), android.widget.Toast.LENGTH_SHORT).show();
+        RayDebug.log((pin ? "pin " : "unpin ") + pkg);
+        updateRows();
+    }
+
+    private CardView stockItemCard(Object item, int ch) {
+        if ("ph:apps".equals(item)) {
+            CardView all = stockCard("ph:apps", null, null, skin.light ? 0xff5e5a53 : 0xff2a3442, copy("All apps", "Tutte le app"), "", -1, ch, false);
+            return all;
+        }
+        if (item instanceof RayWatchHistory.Entry) {
+            RayWatchHistory.Entry e = (RayWatchHistory.Entry) item;
+            AppEntry owner = findApp(e.packageName);
+            return stockCard(e, e.artwork, null, 0, e.title, e.minutesLeft > 0 ? remaining(e.minutesLeft) : owner == null ? "" : owner.name, e.progress, ch, true);
+        }
+        final AppEntry a = (AppEntry) item;
+        CardView card = stockCard(a.packageName, null, a.banner != null && !blank(a) ? a.banner : null, tint(a), a.name, "", -1, ch, false);
+        card.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override public boolean onLongClick(View v) { togglePin(a.packageName); return true; }
+        });
+        return card;
+    }
+
+    /** Every app as a grid of big cards, scrolling down; used when there is nothing to continue. */
+    private void addStockGrid(List<Object> list, float topFrac, int per, int gap, int pad, int w, int h) {
+        int cw = Math.round((w - 2f * pad - (per - 1) * gap) / per), ch = Math.round(cw * 9f / 16), padV = Math.round(24 * unit), rowGap = 2 * gap;
+        ScrollView scroller = new ScrollView(this);
+        scroller.setFocusable(false);
+        scroller.setVerticalScrollBarEnabled(false);
+        scroller.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        scroller.setClipChildren(false);
+        scroller.setClipToPadding(false);
+        scroller.setPadding(pad, padV, pad, padV);
+        LinearLayout column = new LinearLayout(this);
+        column.setOrientation(LinearLayout.VERTICAL);
+        column.setClipChildren(false);
+        scroller.addView(column, new FrameLayout.LayoutParams(-1, -2));
+        LinearLayout row = null;
+        for (int i = 0; i < list.size(); i++) {
+            int r = i / per, c = i % per;
+            if (c == 0) {
+                row = new LinearLayout(this);
+                row.setClipChildren(false);
+                LinearLayout.LayoutParams rl = new LinearLayout.LayoutParams(-1, -2);
+                rl.topMargin = r == 0 ? 0 : rowGap;
+                column.addView(row, rl);
+            }
+            CardView tile = stockItemCard(list.get(i), ch);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(cw, ch);
+            lp.rightMargin = c < per - 1 ? gap : 0;
+            row.addView(tile, lp);
+            appViews.add(tile);
+            spot(tile, new float[]{(pad + c * (float) (cw + gap)) / w, topFrac + r * (float) (ch + rowGap) / h, (float) cw / w, (float) ch / h});
+        }
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(w, h - Math.round(topFrac * h) + padV);
         lp.topMargin = Math.round(topFrac * h) - padV;
         cardLayer.addView(scroller, lp);
     }
@@ -1218,7 +1379,7 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
         }
         tile.art = art;
         tile.addView(art, new FrameLayout.LayoutParams(-1, -1));
-        Typeface med = Typeface.create("sans-serif-medium", Typeface.NORMAL);
+        Typeface med = Fonts.bold(this);
         if (watch) {
             View scrim = new View(this);
             scrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{Color.TRANSPARENT, Color.argb(209, 6, 8, 16)}));
@@ -1226,7 +1387,7 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
             LinearLayout caption = new LinearLayout(this);
             caption.setOrientation(LinearLayout.VERTICAL);
             TextView name = stockText(title, 13, med, Color.WHITE);
-            TextView line = stockText(sub, 11, Typeface.create("sans-serif", Typeface.NORMAL), Color.argb(184, 255, 255, 255));
+            TextView line = stockText(sub, 11, Fonts.regular(this), Color.argb(184, 255, 255, 255));
             for (TextView t : new TextView[]{name, line}) { t.setSingleLine(true); t.setEllipsize(android.text.TextUtils.TruncateAt.END); }
             caption.addView(name, new LinearLayout.LayoutParams(-1, -2));
             if (!sub.isEmpty()) caption.addView(line, new LinearLayout.LayoutParams(-1, -2));
@@ -1240,7 +1401,7 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
             veil.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{Color.argb(41, 255, 255, 255), Color.TRANSPARENT}));
             tile.addView(veil, new FrameLayout.LayoutParams(-1, Math.round(ch * .55f), Gravity.TOP));
         } else {
-            TextView name = stockText(title, 15, Typeface.create("sans-serif-medium", Typeface.BOLD), Color.WHITE);
+            TextView name = stockText(title, 15, Fonts.bold(this), Color.WHITE);
             name.setGravity(Gravity.CENTER);
             name.setMaxLines(2);
             name.setEllipsize(android.text.TextUtils.TruncateAt.END);
@@ -1409,12 +1570,12 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
             if ("search".equals(kind)) {
                 canvas.drawCircle(cx - 1.5f * u, cy - 1.5f * u, 6.5f * u, paint);
                 canvas.drawLine(cx + 3.2f * u, cy + 3.2f * u, cx + 8.5f * u, cy + 8.5f * u, paint);
-            } else if ("sources".equals(kind)) { // arrow into a door
+            } else if ("sources".equals(kind)) { // a screen on its stand, an arrow coming in: the TV inputs
+                canvas.drawRoundRect(cx - 9 * u, cy - 7 * u, cx + 9 * u, cy + 5 * u, 2 * u, 2 * u, paint);
+                canvas.drawLine(cx - 4 * u, cy + 9 * u, cx + 4 * u, cy + 9 * u, paint);
                 android.graphics.Path p = new android.graphics.Path();
-                p.moveTo(cx + 2 * u, cy - 8.5f * u); p.lineTo(cx + 8.5f * u, cy - 8.5f * u);
-                p.lineTo(cx + 8.5f * u, cy + 8.5f * u); p.lineTo(cx + 2 * u, cy + 8.5f * u);
-                p.moveTo(cx - 9.5f * u, cy); p.lineTo(cx + 4 * u, cy);
-                p.moveTo(cx - 1 * u, cy - 5 * u); p.lineTo(cx + 4 * u, cy); p.lineTo(cx - 1 * u, cy + 5 * u);
+                p.moveTo(cx - 4.5f * u, cy - 1 * u); p.lineTo(cx + 3 * u, cy - 1 * u);
+                p.moveTo(cx, cy - 4 * u); p.lineTo(cx + 3 * u, cy - 1 * u); p.lineTo(cx, cy + 2 * u);
                 canvas.drawPath(p, paint);
             } else { // sun / settings
                 canvas.drawCircle(cx, cy, 3.6f * u, paint);
@@ -1461,7 +1622,7 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
     /** "Auto" / "Giorno" / "Notte" for the mode button. */
     private String modeLabel() {
         String m = RayDayNight.mode(this);
-        return "auto".equals(m) ? "Auto" : "day".equals(m) ? "Giorno" : "Notte";
+        return "auto".equals(m) ? "Auto" : "day".equals(m) ? copy("Day", "Giorno") : copy("Night", "Notte");
     }
 
     /** Rebuilds the home when day or night changed (sunrise, sunset, or the pref); true if it did. A rebuild reads the same answer, so it cannot loop. */
@@ -1605,7 +1766,7 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
     }
 
     private void placeholderAction(String what) {
-        if ("apps".equals(what)) { selectCategory("apps", true); showAppCatalog(""); }
+        if ("apps".equals(what)) { selectCategory("apps", true); if (!stock) showAppCatalog(""); }
         else if ("search".equals(what)) showSearch();
         else if ("pair".equals(what)) showPairingDialog();
         else if ("settings".equals(what)) showSettings();
@@ -1616,12 +1777,12 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
     private void showSearch() {
         final EditText query = new EditText(this);
         query.setSingleLine(true);
-        query.setHint("Cerca app installate");
+        query.setHint(copy("Search installed apps", "Cerca app installate"));
         query.setTextColor(TEXT);
         query.setHintTextColor(MUTED);
-        AlertDialog dialog = new AlertDialog.Builder(this).setTitle("Cerca")
-                .setView(query).setNegativeButton("Annulla", null).create();
-        dialog.setButton(AlertDialog.BUTTON_POSITIVE, "Apri", new android.content.DialogInterface.OnClickListener() {
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle(copy("Search", "Cerca"))
+                .setView(query).setNegativeButton(copy("Cancel", "Annulla"), null).create();
+        dialog.setButton(AlertDialog.BUTTON_POSITIVE, copy("Open", "Apri"), new android.content.DialogInterface.OnClickListener() {
             @Override public void onClick(android.content.DialogInterface dialog, int which) {
                 String value = query.getText().toString().trim().toLowerCase(Locale.ROOT);
                 appSearch = value;
@@ -1645,8 +1806,8 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
         list.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(list);
         final AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle(filter.isEmpty() ? "Le tue app" : "Risultati")
-                .setView(scroll).setNegativeButton("Chiudi", null).create();
+                .setTitle(filter.isEmpty() ? copy("Your apps", "Le tue app") : copy("Results", "Risultati"))
+                .setView(scroll).setNegativeButton(copy("Close", "Chiudi"), null).create();
         showingDialog = dialog;
         dialog.setOnDismissListener(new android.content.DialogInterface.OnDismissListener() {
             @Override public void onDismiss(android.content.DialogInterface dismissed) {
@@ -1675,7 +1836,7 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
             list.addView(item, new LinearLayout.LayoutParams(-1, dp(54)));
         }
         if (list.getChildCount() == 0) {
-            TextView empty = label("Nessuna app trovata", 15, MUTED);
+            TextView empty = label(copy("No apps found", "Nessuna app trovata"), 15, MUTED);
             empty.setPadding(dp(20), dp(16), dp(20), dp(16));
             list.addView(empty);
         }
@@ -1692,6 +1853,11 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
         if (stock && (view instanceof StockAction || view == resumeButton || view == discoverButton)) {
             if (view instanceof StockAction) {
                 ((StockAction) view).focusLook(hasFocus);
+                if (hasFocus) { // centred under the focused disc
+                    actionHint.setText(view.getContentDescription());
+                    actionHint.setTranslationX(view.getLeft() + view.getWidth() / 2f - actionHint.getWidth() / 2f);
+                }
+                actionHint.setVisibility(hasFocus ? View.VISIBLE : View.INVISIBLE);
                 view.animate().scaleX(hasFocus ? 1.1f : 1f).scaleY(hasFocus ? 1.1f : 1f).setDuration(160)
                         .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
             } else styleStockButton((Button) view, hasFocus);
@@ -1718,9 +1884,13 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
+        RayDebug.key(event);
         if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
             if (event.getKeyCode() == KeyEvent.KEYCODE_HOME) return true;
-            if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) return true;
+            if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) { if (stock && !category.equals("home")) selectCategory("home", true); return true; }
+            View f = getCurrentFocus();
+            if (event.getKeyCode() == KeyEvent.KEYCODE_MENU && stock && f != null && f.getTag() instanceof String
+                    && findApp((String) f.getTag()) != null) { togglePin((String) f.getTag()); return true; }
         }
         return super.dispatchKeyEvent(event);
     }
@@ -1743,6 +1913,7 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
         } catch (RuntimeException unavailable) { // ActivityNotFound, Security...
             return false;
         }
+        RayDebug.log("launch " + packageName);
         SharedPreferences prefs = context.getSharedPreferences(DimService.PREFS, Context.MODE_PRIVATE);
         String[] current = prefs.getString("ray_recent", "").split("\\n");
         StringBuilder recent = new StringBuilder(packageName);
@@ -1782,6 +1953,7 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
                         .put("accent", String.format("#%06x", s.forMode(RayDayNight.isDay(context)).accent & 0xffffff)).put("hasRemote", s.hasRemote).put("user", s.user));
             result.getJSONObject("theme").put("skins", skins);
             result.put("vpn", RayVpn.state(context));
+            result.put("music", RayAmbient.enabled(context)).put("musicPlaying", RayAmbient.isPlaying());
             // never the API key: only what the phone needs to show
             result.put("weather", RayWeather.cached(context)).put("weatherConsent", RayWeather.consent(context)).put("weatherCity", prefs.getString("ray_weather_city", ""))
                     .put("weatherProvider", prefs.getString("ray_weather_provider", "openmeteo"));
@@ -1843,6 +2015,9 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
                 activity.applySavedTheme();
                 activity.applyDayMode(activity.dayMode);
             }
+        } else if ("music.set".equals(type)) {
+            if (!(command.opt("on") instanceof Boolean)) return response(false);
+            setMusic(context, command.optBoolean("on"));
         } else if ("vpn.open".equals(type)) {
             return response(RayVpn.open(context, command.optString("package", "")));
         } else if ("weather.consent".equals(type)) {
@@ -1916,7 +2091,7 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
         int color = skin.raw ? skin.accent : Color.parseColor(prefs.getString("ray_theme_color", "#24dcff"));
         int style = skin.stock ? 7 : skin.raw ? 6 : themeStyleIndex(prefs.getString("ray_theme_style", "glass"));
         RayGlassDrawable.configure(this, color, style);
-        backdrop.setTheme(color, style, skin.shell);
+        backdrop.setTheme(color, style, skin.shell, skin.alive);
     }
 
     private void showSettings() {
@@ -1937,6 +2112,9 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
                 copy("App companion on the phone (media access)", "Companion app sul telefono (accesso media)"),
                 copy("Weather", "Meteo") + ": " + (!RayWeather.consent(this) ? copy("off", "spento") : prefs.getString("ray_weather_city", "").isEmpty() ? copy("not set", "non impostato") : prefs.getString("ray_weather_city", "")),
                 "VPN: " + (RayVpn.state(this).optBoolean("active") ? copy("on", "attiva") : copy("off", "non attiva")),
+                copy("Background music", "Musica di sottofondo") + ": " + (RayAmbient.enabled(this) ? copy("on", "sì") : copy("off", "no")),
+                copy("Debug panel", "Pannello debug") + ": " + (RayDebug.enabled(this) ? copy("on", "s\u00ec") : copy("off", "no")),
+                copy("AI assistants (MCP)", "Assistenti AI (MCP)") + ": " + (RayMcp.enabled(this) ? copy("on", "s\u00ec") : copy("off", "no")),
                 copy("Android settings", "Impostazioni Android")};
         AlertDialog dialog = new AlertDialog.Builder(this).setTitle(copy("Settings", "Impostazioni"))
                 .setItems(items, new android.content.DialogInterface.OnClickListener() {
@@ -1957,7 +2135,31 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
                         else if (which == 9) openMediaAccess();
                         else if (which == 10) { if (RayWeather.consent(RayLauncherActivity.this)) showWeather(); else askWeatherConsent(); }
                         else if (which == 11) showVpn();
+                        else if (which == 12) { setMusic(RayLauncherActivity.this, !RayAmbient.enabled(RayLauncherActivity.this)); showSettings(); }
+                        else if (which == 13) { RayDebug.toggle(RayLauncherActivity.this); showSettings(); }
+                        else if (which == 14) showMcp();
                         else try { startActivity(new Intent(Settings.ACTION_SETTINGS)); } catch (RuntimeException ignored) { }
+                    }
+                }).setNegativeButton(copy("Close", "Chiudi"), null).create();
+        trackDialog(dialog);
+        showStyled(dialog);
+    }
+
+    /** MCP: what it allows, the switch, and the command to connect Claude Code (it carries the pairing key). */
+    private void showMcp() {
+        final boolean on = RayMcp.enabled(this);
+        String line = RayMcp.command(this);
+        String text = copy("Lets an AI assistant on your network (for example Claude Code) control this TV like the phone remote: "
+                + "open apps, press keys, change the skin, the filter and the music. It needs the pairing key.",
+                "Permette a un assistente AI nella tua rete (per esempio Claude Code) di comandare questa TV come il telecomando: "
+                + "aprire app, premere tasti, cambiare skin, filtro e musica. Serve la chiave di abbinamento.");
+        if (on && line != null) text += "\n\n" + line;
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle(copy("AI assistants (MCP)", "Assistenti AI (MCP)")).setMessage(text)
+                .setPositiveButton(on ? copy("Turn off", "Disattiva") : copy("Turn on", "Attiva"), new android.content.DialogInterface.OnClickListener() {
+                    @Override public void onClick(android.content.DialogInterface d, int which) {
+                        RayMcp.set(RayLauncherActivity.this, !on);
+                        RayDebug.log("mcp " + (on ? "off" : "on"));
+                        if (!on) showMcp();
                     }
                 }).setNegativeButton(copy("Close", "Chiudi"), null).create();
         trackDialog(dialog);
@@ -2034,10 +2236,16 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
         if (win == null) return;
         int accent = accent();
         GradientDrawable bg = new GradientDrawable();
-        bg.setColor(Color.argb(238, 8, 16, 30));
-        bg.setCornerRadius(dp(18));
-        bg.setStroke(dp(1), Color.argb(130, Color.red(accent), Color.green(accent), Color.blue(accent)));
+        bg.setColor(stock ? Color.argb(248, 20, 22, 28) : Color.argb(238, 8, 16, 30));
+        bg.setCornerRadius(dp(stock ? 20 : 18));
+        bg.setStroke(dp(1), stock ? Color.argb(28, 255, 255, 255) : Color.argb(130, Color.red(accent), Color.green(accent), Color.blue(accent)));
+        if (stock) accent = Color.WHITE; // the home's focus look: a white ring
         win.setBackgroundDrawable(bg);
+        final android.view.Window shown = win;
+        win.getDecorView().post(new Runnable() { @Override public void run() { // a long list must not touch the screen edges
+            int max = Math.round(getResources().getDisplayMetrics().heightPixels * .86f);
+            if (shown.getDecorView().getHeight() > max) shown.setLayout(shown.getAttributes().width, max);
+        } });
         View decor = win.getDecorView();
         Fonts.apply(decor);
         View title = decor.findViewById(getResources().getIdentifier("alertTitle", "id", "android"));
@@ -2049,13 +2257,13 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
         View message = decor.findViewById(android.R.id.message);
         if (message instanceof TextView) ((TextView) message).setTextColor(TEXT);
         ListView list = d.getListView();
-        if (list != null) list.setSelector(focusRing(accent, 70, 10));
+        if (list != null) list.setSelector(focusRing(accent, stock ? 26 : 70, stock ? 12 : 10));
         for (int which : new int[]{AlertDialog.BUTTON_POSITIVE, AlertDialog.BUTTON_NEGATIVE, AlertDialog.BUTTON_NEUTRAL}) {
             Button b = d.getButton(which);
             if (b == null) continue;
             StateListDrawable states = new StateListDrawable();
-            states.addState(new int[]{android.R.attr.state_focused}, focusRing(accent, 90, 24));
-            states.addState(new int[]{android.R.attr.state_pressed}, focusRing(accent, 90, 24));
+            states.addState(new int[]{android.R.attr.state_focused}, focusRing(accent, stock ? 26 : 90, 24));
+            states.addState(new int[]{android.R.attr.state_pressed}, focusRing(accent, stock ? 26 : 90, 24));
             states.addState(new int[0], new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
             b.setBackground(states);
             b.setAllCaps(false);
@@ -2149,7 +2357,7 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
         content.setGravity(Gravity.CENTER);
         content.setPadding(dp(20), dp(12), dp(20), dp(8));
         final ArrayList<TextView> dialogLabels = new ArrayList<>();
-        TextView message = label(url == null ? "Connetti la TV al Wi-Fi per abbinarla" : hint != null ? hint : "Scansiona il codice QR con il telefono", 16, TEXT);
+        TextView message = label(url == null ? copy("Connect the TV to Wi-Fi to pair it", "Connetti la TV al Wi-Fi per abbinarla") : hint != null ? hint : copy("Scan the QR code with the phone", "Scansiona il codice QR con il telefono"), 16, TEXT);
         dialogLabels.add(message);
         message.setGravity(Gravity.CENTER);
         content.addView(message, new LinearLayout.LayoutParams(-1, -2));
@@ -2165,9 +2373,9 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
             address.setPadding(0, dp(8), 0, 0);
             content.addView(address, new LinearLayout.LayoutParams(-1, -2));
         }
-        AlertDialog dialog = new AlertDialog.Builder(this).setTitle("Abbina il telefono").setView(content)
-                .setPositiveButton("Chiudi", null)
-                .setNeutralButton("Puntatore sopra le app", new android.content.DialogInterface.OnClickListener() {
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle(copy("Pair the phone", "Abbina il telefono")).setView(content)
+                .setPositiveButton(copy("Close", "Chiudi"), null)
+                .setNeutralButton(copy("Pointer over apps", "Puntatore sopra le app"), new android.content.DialogInterface.OnClickListener() {
                     @Override public void onClick(android.content.DialogInterface dialog, int which) {
                         openPointerPermission();
                     }
@@ -2271,7 +2479,20 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
 
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
 
-    private String copy(String en, String it) { return "it".equals(Locale.getDefault().getLanguage()) ? it : en; }
+    private String copy(String en, String it) { return I18n.t(en, it); }
+
+    /** Weekday, day and month in the system language's own order, capitalised. */
+    private static String longDate() {
+        Locale l = Locale.getDefault();
+        String d = new java.text.SimpleDateFormat(android.text.format.DateFormat.getBestDateTimePattern(l, "EEEEdMMMM"), l).format(new java.util.Date());
+        return d.isEmpty() ? d : d.substring(0, 1).toUpperCase(l) + d.substring(1);
+    }
+
+    private String greeting() {
+        int hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY);
+        return hour >= 5 && hour < 13 ? copy("Good morning", "Buongiorno") : hour >= 13 && hour < 18 ? copy("Good afternoon", "Buon pomeriggio")
+                : hour >= 18 && hour < 23 ? copy("Good evening", "Buonasera") : copy("Good night", "Buonanotte");
+    }
 
     @Override
     public void run() {
@@ -2279,7 +2500,7 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
         if (minute != lastMinute) { // the clock only changes once a minute
             lastMinute = minute;
             clock.setText(android.text.format.DateFormat.getTimeFormat(this).format(new java.util.Date()));
-            if (dateView != null) dateView.setText(new java.text.SimpleDateFormat("EEEE d MMMM", Locale.getDefault()).format(new java.util.Date()));
+            if (dateView != null) dateView.setText(longDate());
             if (heroItem == null && (hero != null || stockHero != null)) updateHero(null, true);
             if (checkDayNight()) return; // the skin is rebuilt in its other variant
         }
@@ -2294,7 +2515,7 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
         JSONObject w = demo ? RayDemo.weather() : RayWeather.cached(this);
         String city = demo ? "Roma" : prefs.getString("ray_weather_city", "");
         if (stock) {
-            weatherView.setText(w == null ? "" : RayWeather.glyph(w.optInt("code"), w.optBoolean("day", true)) + " " + w.optInt("temp") + "\u00b0 \u00b7 " + city);
+            weatherView.setText(w == null ? "" : RayWeather.glyph(w.optInt("code"), w.optBoolean("day", true)) + "\ufe0e " + w.optInt("temp") + "\u00b0  " + city);
             return;
         }
         float[] r = skin.weather;
@@ -2384,14 +2605,14 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
 
     /** The weather stays off until this is accepted: no request leaves the TV before. */
     private void askWeatherConsent() {
-        AlertDialog dialog = new AlertDialog.Builder(this).setTitle(copy("Weather", "Meteo")).setMessage(RayWeather.CONSENT)
-                .setPositiveButton("Accetta", new android.content.DialogInterface.OnClickListener() {
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle(copy("Weather", "Meteo")).setMessage(RayWeather.consentText())
+                .setPositiveButton(copy("Accept", "Accetta"), new android.content.DialogInterface.OnClickListener() {
                     @Override public void onClick(android.content.DialogInterface d, int which) {
                         RayWeather.setConsent(RayLauncherActivity.this, true);
                         RaySocket.stateChanged();
                         showWeather();
                     }
-                }).setNegativeButton("Annulla", null).create();
+                }).setNegativeButton(copy("Cancel", "Annulla"), null).create();
         trackDialog(dialog);
         showStyled(dialog);
     }
@@ -2425,8 +2646,29 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
         if (connectPanel == null) return;
         if (stock) { updateStockConnect(); return; }
         if (RaySocket.clientCount() > 0) {
-            if (!connectedShown) {
+            // a phone is here, so the QR is not needed: the box shows the weather when there is one, else a "connected" pill
+            JSONObject w = RayDemo.on(this) ? RayDemo.weather() : RayWeather.consent(this) ? RayWeather.cached(this) : null;
+            String city = RayDemo.on(this) ? "Roma" : prefs.getString("ray_weather_city", "");
+            String weather = w == null ? null : RayWeather.glyph(w.optInt("code"), w.optBoolean("day", true)) + "︎ " + w.optInt("temp")
+                    + "°\n" + RayWeather.label(w.optInt("code")) + (city.isEmpty() ? "" : "\n" + city);
+            String shownAs = weather == null ? "pill" : weather;
+            if (connectedShown && !shownAs.equals(connectShownAs)) connectedShown = false;
+            if (!connectedShown && weather != null) {
                 connectedShown = true;
+                connectShownAs = shownAs;
+                connectUrl = null;
+                connectQr.setVisibility(View.GONE);
+                connectText.setText(weather);
+                connectText.setTextColor(TEXT);
+                connectText.setTextSize(18);
+                connectText.setMaxLines(3);
+                connectText.setPadding(0, 0, 0, 0);
+                connectText.setBackground(null);
+                connectText.setLayoutParams(new LinearLayout.LayoutParams(-1, -2));
+                connectPanel.setBackgroundColor(Color.TRANSPARENT);
+            } else if (!connectedShown) {
+                connectedShown = true;
+                connectShownAs = shownAs;
                 connectUrl = null;
                 connectQr.setVisibility(View.GONE);
                 connectText.setText(copy("Phone connected", "Telefono collegato"));
@@ -2446,6 +2688,8 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
         }
         if (connectedShown) {
             connectedShown = false;
+            connectShownAs = null;
+            connectText.setMaxLines(2);
             connectText.setTextColor(TEXT);
             connectText.setPadding(0, dp(6), 0, 0);
             connectText.setBackground(null);

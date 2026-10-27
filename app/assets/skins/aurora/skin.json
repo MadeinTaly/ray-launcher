@@ -3,10 +3,13 @@
   "id": "aurora",
   "name": {
     "it": "Aurora",
-    "en": "Aurora"
+    "en": "Aurora",
+    "de": "Polarlicht",
+    "fr": "Aurore",
+    "es": "Aurora"
   },
   "author": "RAY",
-  "accent": "#c9a7ff",
+  "accent": "#1F7A63",
   "frame": "frame.webp",
   "animated": false,
   "wallpaper": "user",
@@ -152,6 +155,11 @@
     ]
   },
   "variants": {
-    "night": {"frame": "frame-night.webp", "remote": "remote-night.webp"}
-  }
+    "night": {
+      "frame": "frame-night.webp",
+      "remote": "remote-night.webp",
+      "accent": "#5BE3A0"
+    }
+  },
+  "alive": true
 }

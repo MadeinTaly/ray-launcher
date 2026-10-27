@@ -81,6 +81,7 @@ public class DimService extends Service implements Runnable {
     @Override
     public void onCreate() {
         super.onCreate();
+        I18n.init(this);
         prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
         RayVpn.start(this);
         audio = new AudioFx(this, prefs);
@@ -88,7 +89,8 @@ public class DimService extends Service implements Runnable {
         android.content.IntentFilter f = new android.content.IntentFilter();
         f.addAction(android.media.audiofx.AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION);
         f.addAction(android.media.audiofx.AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION);
-        registerReceiver(sessionReceiver, f);
+        if (android.os.Build.VERSION.SDK_INT >= 33) registerReceiver(sessionReceiver, f, 2 /* Context.RECEIVER_EXPORTED: other apps' players send these */);
+        else registerReceiver(sessionReceiver, f);
     }
 
     /** A player opened or closed its audio session (SessionReceiver). */

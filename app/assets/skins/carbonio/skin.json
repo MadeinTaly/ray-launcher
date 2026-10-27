@@ -3,7 +3,7 @@
   "id": "carbonio",
   "name": {
     "it": "Carbonio",
-    "en": "Carbon"
+    "en": "Carbon", "de": "Carbon", "fr": "Carbone", "es": "Carbono"
   },
   "author": "RAY",
   "accent": "#ff3b3b",

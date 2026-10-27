@@ -14,16 +14,20 @@ import java.net.URLEncoder;
 
 /**
  * Current weather for the city the user typed (Open-Meteo, no key, no location lookup: only the city name and
- * its coordinates leave the device). OFF until the user accepts CONSENT: without it nothing here touches the
+ * its coordinates leave the device). OFF until the user accepts consentText(): without it nothing here touches the
  * network. Cached in prefs for 30 min; callers read cached() on the UI thread and call refresh() off it.
  */
 final class RayWeather {
     private static final long TTL = 30 * 60 * 1000L;
 
     /** Shown on the TV and on the phone before the weather is switched on. */
-    static final String CONSENT = "Per il meteo la TV contatta il servizio scelto (Open-Meteo, server in UE; oppure OpenWeatherMap) "
-            + "inviando il nome della città e le sue coordinate; il servizio vede l’indirizzo IP della TV. "
-            + "Nessun altro dato viene inviato.";
+    static String consentText() {
+        return I18n.t("For the weather the TV contacts the chosen service (Open-Meteo, servers in the EU; or OpenWeatherMap) "
+                + "sending the city name and its coordinates; the service sees the TV's IP address. No other data is sent.",
+                "Per il meteo la TV contatta il servizio scelto (Open-Meteo, server in UE; oppure OpenWeatherMap) "
+                + "inviando il nome della città e le sue coordinate; il servizio vede l’indirizzo IP della TV. "
+                + "Nessun altro dato viene inviato.");
+    }
 
     private RayWeather() { }
 
@@ -165,15 +169,15 @@ final class RayWeather {
 
     /** Short Italian label for a WMO weather code. */
     static String label(int code) {
-        if (code == 0) return "Sereno";
-        if (code <= 2) return "Poco nuvoloso";
-        if (code == 3) return "Coperto";
-        if (code == 45 || code == 48) return "Nebbia";
-        if (code >= 51 && code <= 67) return "Pioggia";
-        if (code >= 71 && code <= 77) return "Neve";
-        if (code >= 80 && code <= 82) return "Rovesci";
-        if (code >= 85 && code <= 86) return "Neve";
-        if (code >= 95) return "Temporale";
+        if (code == 0) return I18n.t("Clear", "Sereno");
+        if (code <= 2) return I18n.t("Partly cloudy", "Poco nuvoloso");
+        if (code == 3) return I18n.t("Overcast", "Coperto");
+        if (code == 45 || code == 48) return I18n.t("Fog", "Nebbia");
+        if (code >= 51 && code <= 67) return I18n.t("Rain", "Pioggia");
+        if (code >= 71 && code <= 77) return I18n.t("Snow", "Neve");
+        if (code >= 80 && code <= 82) return I18n.t("Showers", "Rovesci");
+        if (code >= 85 && code <= 86) return I18n.t("Snow", "Neve");
+        if (code >= 95) return I18n.t("Thunderstorm", "Temporale");
         return "";
     }
 

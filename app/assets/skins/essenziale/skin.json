@@ -1,46 +1,196 @@
 {
   "format": 1,
   "id": "essenziale",
-  "name": {"it": "Essenziale", "en": "Essential"},
+  "name": {
+    "it": "Essenziale",
+    "en": "Essential",
+    "de": "Essenziell",
+    "fr": "Essentiel",
+    "es": "Esencial"
+  },
   "author": "RAY",
-  "accent": "#8fb4ff",
+  "accent": "#EDB980",
   "frame": null,
   "animated": false,
   "wallpaper": "user",
   "wallpaperDefault": {
-    "gradient": ["#16213F", "#2A2C58", "#5B3A62", "#B5584F"], "stops": [0, 0.38, 0.66, 1], "angle": 160,
-    "glows": [{"c": "#FF965A", "a": 0.55, "x": 0.78, "y": 0.08, "r": 0.7}, {"c": "#3C5ABE", "a": 0.55, "x": 0.12, "y": 0.95, "r": 0.7}],
-    "mountains": ["#CC2A2150", "#E61A1540"]
+    "gradient": [
+      "#040810",
+      "#07101C",
+      "#0D1726",
+      "#080E18"
+    ],
+    "stops": [
+      0,
+      0.5,
+      0.8,
+      1
+    ],
+    "angle": 180,
+    "glows": [
+      {
+        "c": "#EDB980",
+        "a": 0.1,
+        "x": 0.72,
+        "y": 0.86,
+        "r": 0.55
+      },
+      {
+        "c": "#2C4A6E",
+        "a": 0.3,
+        "x": 0.2,
+        "y": 0.1,
+        "r": 0.8
+      }
+    ],
+    "horizon": {
+      "y": 0.86,
+      "land": "#010309",
+      "lines": "#14A5AFC0",
+      "lights": "#EDB980",
+      "count": 46
+    },
+    "grain": 0.05,
+    "image": "wallpaper-night.webp"
   },
   "wallpaperFx": {
-    "blurBelowY": 0.5, "blurFeather": 0.1, "scrimRgb": "080A14",
-    "scrimH": [[0, 0.62], [0.45, 0.25], [0.70, 0]],
-    "scrimV": [[0, 0.35], [0.22, 0], [0.48, 0], [1, 0.72]]
+    "blurBelowY": 0.5,
+    "blurFeather": 0.1,
+    "scrimRgb": "040810",
+    "scrimH": [
+      [
+        0,
+        0.55
+      ],
+      [
+        0.45,
+        0.2
+      ],
+      [
+        0.7,
+        0
+      ]
+    ],
+    "scrimV": [
+      [
+        0,
+        0.3
+      ],
+      [
+        0.22,
+        0
+      ],
+      [
+        0.5,
+        0
+      ],
+      [
+        1,
+        0.55
+      ]
+    ]
   },
   "style": {
-    "cardRadius": 12, "panel": "glass", "text": "#F4F6FA", "muted": "#ADF4F6FA",
-    "dim": 0.78, "focusScale": 1.08, "ringDp": 2.5, "ring": "#FFFFFF", "shadow": "#8C000000",
-    "panelFill": "#1AFFFFFF", "panelStrong": "#29FFFFFF", "ok": "#22A55B",
-    "btnBg": "#F4F6FA", "btnFg": "#10131A", "btn2Bg": "#24FFFFFF", "btn2Fg": "#F4F6FA"
+    "cardRadius": 10,
+    "panel": "glass",
+    "text": "#EDE9E1",
+    "muted": "#9CA5B1",
+    "dim": 0.82,
+    "focusScale": 1.06,
+    "ringDp": 2.5,
+    "ring": "#EDB980",
+    "shadow": "#B3000000",
+    "panelFill": "#14EDE9E1",
+    "panelStrong": "#24EDE9E1",
+    "ok": "#7FC7A0",
+    "btnBg": "#EDB980",
+    "btnFg": "#201307",
+    "btn2Bg": "#1FEDE9E1",
+    "btn2Fg": "#EDE9E1"
   },
   "variants": {
     "night": {},
     "day": {
-      "accent": "#2f5bea",
+      "accent": "#035F5C",
       "wallpaperDefault": {
-        "gradient": ["#CFE0F7", "#E3DCF0", "#F6DCD0"], "stops": [0, 0.45, 1], "angle": 160,
-        "glows": [{"c": "#FFD6AA", "a": 0.95, "x": 0.80, "y": 0.05, "r": 0.7}, {"c": "#96BEFF", "a": 0.85, "x": 0.08, "y": 1.0, "r": 0.7}],
-        "mountains": ["#66967A96", "#8CB4A0B4"]
+        "gradient": [
+          "#FCF9F3",
+          "#F5F1E9",
+          "#EAE5DB"
+        ],
+        "stops": [
+          0,
+          0.6,
+          1
+        ],
+        "angle": 180,
+        "glows": [
+          {
+            "c": "#FFFFFF",
+            "a": 0.7,
+            "x": 0.7,
+            "y": 0.05,
+            "r": 0.6
+          }
+        ],
+        "horizon": {
+          "y": 0.88,
+          "land": "#E3DED3",
+          "lines": "#0F5E5A53"
+        },
+        "grain": 0.035,
+        "image": "wallpaper-day.webp"
       },
       "wallpaperFx": {
-        "blurBelowY": 0.5, "blurFeather": 0.1, "scrimRgb": "FFFFFF",
-        "scrimH": [[0, 0.62], [0.45, 0.30], [0.70, 0]],
-        "scrimV": [[0, 0.35], [0.22, 0], [0.48, 0], [1, 0.60]]
+        "blurBelowY": 0.5,
+        "blurFeather": 0.1,
+        "scrimRgb": "FCF9F3",
+        "scrimH": [
+          [
+            0,
+            0.5
+          ],
+          [
+            0.45,
+            0.2
+          ],
+          [
+            0.7,
+            0
+          ]
+        ],
+        "scrimV": [
+          [
+            0,
+            0.3
+          ],
+          [
+            0.22,
+            0
+          ],
+          [
+            0.5,
+            0
+          ],
+          [
+            1,
+            0.4
+          ]
+        ]
       },
       "style": {
-        "text": "#141821", "muted": "#AD141821", "dim": 0.90, "ring": "#141821", "shadow": "#52283250",
-        "panelFill": "#9EFFFFFF", "panelStrong": "#E6FFFFFF",
-        "btnBg": "#141821", "btnFg": "#FFFFFF", "btn2Bg": "#B3FFFFFF", "btn2Fg": "#141821"
+        "text": "#13110F",
+        "muted": "#5E5A53",
+        "dim": 0.92,
+        "ring": "#035F5C",
+        "shadow": "#40332B20",
+        "panelFill": "#0F13110F",
+        "panelStrong": "#1F13110F",
+        "ok": "#2E7D5B",
+        "btnBg": "#035F5C",
+        "btnFg": "#FCF9F3",
+        "btn2Bg": "#F5F1E9",
+        "btn2Fg": "#13110F"
       }
     }
   }

@@ -1,0 +1,7 @@
+* Targets Android 15: no Play Protect block on Google TV
+* New Essential home: recent and pinned apps, bigger QR
+* Day and night mountain wallpapers, new type; Aurora redrawn and animated
+* Optional background music (CC0)
+* Phone remote: works over other apps without root (Android 13+), recenter button
+* MCP endpoint for AI assistants (off by default), debug panel
+* German, French and Spanish

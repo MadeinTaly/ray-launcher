@@ -31,7 +31,7 @@ final class RaySkin {
     private static final String[] ACTIONS = {"search", "apps", "sources", "audio", "pair", "settings"};
     private static List<RaySkin> builtIn;
     /** The only files a skin zip may carry, optionally under one top folder; everything else is ignored. */
-    private static final Pattern ENTRY = Pattern.compile("(?:[^/]+/)?(skin\\.json|frame(?:-day|-night)?\\.(?:webp|png)|remote(?:-day|-night)?\\.webp|preview\\.webp|icons(?:-day|-night)?/[a-z]{1,16}\\.png)");
+    private static final Pattern ENTRY = Pattern.compile("(?:[^/]+/)?(skin\\.json|frame(?:-day|-night)?\\.(?:webp|png)|wallpaper(?:-day|-night)?\\.webp|remote(?:-day|-night)?\\.webp|preview\\.webp|icons(?:-day|-night)?/[a-z]{1,16}\\.png)");
     private static final int FILE_MAX = 8 << 20, ZIP_MAX = 24 << 20;
 
     final String id;
@@ -59,6 +59,8 @@ final class RaySkin {
     int textColor = Color.WHITE, mutedColor = Color.rgb(160, 175, 190);
     /** Frameless ("stock") skins: drawn by code, layout fixed in stockLayout (docs/SKIN_FORMAT.md). */
     boolean stock;
+    /** A frame drawn as it is that slowly breathes and shimmers ("alive": true, frames with "animated": false only). */
+    boolean alive;
     boolean light;
     float dim = .78f, focusScale = 1.08f, ringDp = 2.5f;
     int ring = Color.WHITE, shadow = 0x8c000000, panelFill = 0x1affffff, panelStrong = 0x29ffffff, ok = 0xff22a55b,
@@ -93,7 +95,12 @@ final class RaySkin {
         return v != null ? v : this;
     }
 
+    /** Names in more languages than it/en ({"de": .., "fr": ..}), used when the system language matches. */
+    JSONObject names;
+
     String title(boolean italian) {
+        String other = names == null || italian ? null : text(names.optString(java.util.Locale.getDefault().getLanguage(), ""));
+        if (other != null) return other;
         String a = italian ? nameIt : nameEn, b = italian ? nameEn : nameIt;
         return a != null ? a : b != null ? b : id;
     }
@@ -245,7 +252,7 @@ final class RaySkin {
         {
             RaySkin s = new RaySkin(id, dir, user);
             JSONObject name = j.optJSONObject("name");
-            if (name != null) { s.nameIt = text(name.optString("it", "")); s.nameEn = text(name.optString("en", "")); }
+            if (name != null) { s.nameIt = text(name.optString("it", "")); s.nameEn = text(name.optString("en", "")); s.names = name; }
             if (s.nameIt == null && s.nameEn == null) throw new IllegalArgumentException("name.it or name.en required");
             s.author = text(j.optString("author", ""));
             s.accent = color(j.optString("accent", ""), 0);
@@ -257,8 +264,9 @@ final class RaySkin {
                 s.shell = dir + "/" + frame;
             }
             s.raw = !j.optBoolean("animated", false);
+            s.alive = s.raw && j.optBoolean("alive", false);
             String wp = j.optString("wallpaper", "none");
-            s.wallpaper = wp.matches("user|none|[A-Za-z0-9_-]+\\.(webp|png|jpg)") ? wp : "none";
+            s.wallpaper = s.shell != null ? "none" : wp.matches("user|none|[A-Za-z0-9_-]+\\.(webp|png|jpg)") ? wp : "none";
             String remote = j.optString("remote", "remote.webp"), icons = j.optString("icons", "icons");
             if (remote.matches("remote(-day|-night)?\\.webp")) s.remoteFile = remote;
             if (icons.matches("icons(-day|-night)?")) s.iconDir = icons;
@@ -344,7 +352,7 @@ final class RaySkin {
         float u = 1 / 1280f, v = 1 / 720f;
         hero = null;
         logo = clock = new float[]{.05f, .055f, .24f, .12f};
-        connect = new float[]{.65f, .045f, .30f, .125f};
+        connect = new float[]{.62f, .045f, .33f, .32f};
         resume = new float[]{.05f, .415f, 96 * u, 40 * v};
         discover = new float[]{.05f + 108 * u, .415f, 87 * u, 40 * v};
         nav = new String[0];
