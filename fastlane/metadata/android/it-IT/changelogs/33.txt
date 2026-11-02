@@ -1,0 +1,2 @@
+* Controllo aggiornamenti all'avvio (solo copie da GitHub): propone la nuova versione e la installa dopo la conferma di Android; "Non chiedere più" ricorda la scelta
+* Canale beta, attivo di default sulle versioni beta; entrambi gli interruttori nelle Impostazioni

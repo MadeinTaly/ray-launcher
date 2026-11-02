@@ -1,0 +1,2 @@
+* Update check at start (GitHub installs only): offers the new version and installs it after Android's confirmation; "Don't ask again" remembers your choice
+* Beta channel, on by default on beta versions; both switches in Settings

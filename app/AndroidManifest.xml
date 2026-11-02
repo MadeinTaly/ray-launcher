@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="dev.raylauncher"
-    android:versionCode="32"
-    android:versionName="0.3.0-beta.1">
+    android:versionCode="33"
+    android:versionName="0.4.0-beta.1">
 
     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35" />
 
@@ -15,8 +15,10 @@
     <!-- Android 11+ package visibility: a launcher lists and starts every installed app. -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <!-- Local-network remote server, and the optional weather lookup (only after consent). -->
+    <!-- Local-network remote server, the optional weather lookup (only after consent), and the update check against GitHub releases. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Installing the update downloaded from GitHub (Android still asks for confirmation). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- Finding the TVs on the local network (mDNS) from the phone app, like the WLED app does. -->
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
     <!-- Optional, only if granted with adb (pm grant): lets the Enable button turn on the accessibility service
@@ -126,5 +128,8 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+
+        <!-- Result of the self-update install session; only this app sends it. -->
+        <receiver android:name=".Updater$Done" android:exported="false" />
     </application>
 </manifest>

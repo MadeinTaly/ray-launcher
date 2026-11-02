@@ -188,6 +188,7 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
         boolean asking = requestWatchHistoryPermission();
         if (RayAmbient.enabled(this)) RayAmbient.start(this);
         else if (!asking && !RayAmbient.asked(this) && showingDialog == null) askMusic();
+        if (!asking && showingDialog == null) Updater.check(this);
         refreshApps();
         run();
         RayDebug.attach(this, root);
@@ -2116,6 +2117,15 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
                 copy("Debug panel", "Pannello debug") + ": " + (RayDebug.enabled(this) ? copy("on", "s\u00ec") : copy("off", "no")),
                 copy("AI assistants (MCP)", "Assistenti AI (MCP)") + ": " + (RayMcp.enabled(this) ? copy("on", "s\u00ec") : copy("off", "no")),
                 copy("Android settings", "Impostazioni Android")};
+        final boolean updates = !Compat.fromFdroid(this);
+        if (updates) {
+            String stay = !Updater.beta(this) && Updater.versionName(this).contains("-")
+                    ? " (" + copy("Stays on this beta until a newer stable is out", "Resta su questa beta finché non esce una stabile più nuova") + ")" : "";
+            items = new String[]{items[0], items[1], items[2], items[3], items[4], items[5], items[6], items[7], items[8], items[9], items[10], items[11], items[12], items[13], items[14],
+                    copy("Check for updates at start", "Controlla aggiornamenti all’avvio") + ": " + (Updater.enabled(this) ? copy("on", "sì") : copy("off", "no")),
+                    copy("Beta updates", "Aggiornamenti beta") + ": " + (Updater.beta(this) ? copy("on", "sì") : copy("off", "no")) + stay,
+                    items[15]};
+        }
         AlertDialog dialog = new AlertDialog.Builder(this).setTitle(copy("Settings", "Impostazioni"))
                 .setItems(items, new android.content.DialogInterface.OnClickListener() {
                     @Override public void onClick(android.content.DialogInterface d, int which) {
@@ -2138,6 +2148,8 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
                         else if (which == 12) { setMusic(RayLauncherActivity.this, !RayAmbient.enabled(RayLauncherActivity.this)); showSettings(); }
                         else if (which == 13) { RayDebug.toggle(RayLauncherActivity.this); showSettings(); }
                         else if (which == 14) showMcp();
+                        else if (updates && which == 15) { Updater.setEnabled(RayLauncherActivity.this, !Updater.enabled(RayLauncherActivity.this)); showSettings(); }
+                        else if (updates && which == 16) { Updater.setBeta(RayLauncherActivity.this, !Updater.beta(RayLauncherActivity.this)); showSettings(); }
                         else try { startActivity(new Intent(Settings.ACTION_SETTINGS)); } catch (RuntimeException ignored) { }
                     }
                 }).setNegativeButton(copy("Close", "Chiudi"), null).create();

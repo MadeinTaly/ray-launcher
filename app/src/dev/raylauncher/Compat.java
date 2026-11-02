@@ -16,6 +16,16 @@ final class Compat {
     private Compat() {
     }
 
+    /** Installed from an F-Droid client: that build is signed by F-Droid, so phones should get it there too. */
+    static boolean fromFdroid(Context context) {
+        String i = null;
+        try {
+            i = context.getPackageManager().getInstallerPackageName(context.getPackageName());
+        } catch (RuntimeException ignored) {
+        }
+        return i != null && (i.startsWith("org.fdroid.") || i.equals("com.looker.droidify") || i.equals("com.machiav3lli.fdroid"));
+    }
+
     static void startForegroundService(Context context, Intent intent) {
         try {
             Context.class.getMethod("startForegroundService", Intent.class).invoke(context, intent);

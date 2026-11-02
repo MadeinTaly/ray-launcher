@@ -148,6 +148,14 @@ Sample content (generated, no third-party artwork) shown with different skins.
 RAY has no accounts, analytics or ads, and talks only to your local network. The only internet request is the
 optional weather lookup, after you accept a consent dialog. Details in [PRIVACY.md](PRIVACY.md).
 
+## Updates
+
+Installs from GitHub check `api.github.com` for a newer release when the app starts (at most every 6 hours) and offer
+to install it; Android still asks for confirmation. Turn it off in the TV Settings (*Check for updates at start*).
+*Beta updates* also takes pre-releases (on by default while the installed version is a beta). Going back to stable
+waits for a newer stable release, since Android cannot downgrade an app. Installs from F-Droid never check: F-Droid
+updates them.
+
 ## Third-party
 
 - [QR Code generator library](https://www.nayuki.io/page/qr-code-generator-library) by Project Nayuki,

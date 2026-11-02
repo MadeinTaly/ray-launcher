@@ -2,8 +2,8 @@
 
 **In short:** RAY does not collect, store or send personal data to the developer or to any third party. It has no
 accounts, no analytics, no ads and no tracking, and contains no third-party SDKs. Everything stays on your device and
-on your local network. The only internet request RAY can make is the optional weather lookup, and only after you
-give your explicit consent.
+on your local network. The only internet requests RAY can make are the optional weather lookup, only after you
+give your explicit consent, and the update check below.
 
 The developer does not operate any server and receives no data from the app. Because no personal data reaches the
 developer, there is no data controller relationship to manage for the app itself; the weather provider you choose
@@ -33,6 +33,14 @@ If you accept:
   all requests and erases the stored city, coordinates and cached weather. Your API key, if any, is stored only on the
   TV, is never sent back to the phone and is shown nowhere.
 - Provider policies: [Open-Meteo](https://open-meteo.com/en/terms), [OpenWeatherMap](https://openweathermap.org/privacy-policy).
+
+## Update check
+
+At start (GitHub installs only) RAY asks `api.github.com` for the latest
+release of this project (at most every 6 hours) and, if you accept, downloads the APK from `github.com`. GitHub sees
+your IP address; RAY sends no other data. Switch it off in the TV Settings (*Check for updates at start*). The beta
+channel (*Beta updates*) also takes pre-releases; going back to stable waits for a newer stable release because
+Android cannot downgrade an app. Installs from F-Droid never run the check.
 
 ## Data that stays on the device
 
@@ -68,11 +76,15 @@ Last updated: 2026-10-23
 ## Informativa (italiano)
 
 **In breve:** RAY non raccoglie ne invia dati personali allo sviluppatore o a terzi. Nessun account, analytics,
-pubblicita o tracciamento, nessun SDK di terze parti. Tutto resta sul dispositivo e sulla rete locale. L'unica
-richiesta a internet e il meteo facoltativo, e solo dopo il tuo consenso esplicito.
+pubblicita o tracciamento, nessun SDK di terze parti. Tutto resta sul dispositivo e sulla rete locale. Le uniche
+richieste a internet sono il meteo facoltativo (solo dopo il tuo consenso esplicito) e il controllo aggiornamenti.
 
 - **Rete locale:** telecomando sulla porta 8766 protetto da una chiave di abbinamento casuale (QR), annuncio mDNS
   della TV (mai la chiave). Il traffico e HTTP in chiaro sulla LAN: usalo solo su reti fidate.
+- **Controllo aggiornamenti:** all'avvio della TV RAY chiede all'API pubblica di GitHub (api.github.com) l'ultima
+  release; se c'e una versione piu nuova propone di scaricare l'APK da github.com e Android chiede conferma. Non viene
+  inviato nessun dato oltre a una normale richiesta HTTPS (GitHub vede l'indirizzo IP). Si disattiva dalle
+  Impostazioni; mai sulle copie installate da F-Droid.
 - **Meteo (facoltativo, disattivato di default):** dopo il consenso e l'inserimento di una citta, il nome della citta
   e le sue coordinate vengono inviati via HTTPS a Open-Meteo (server in UE) oppure a OpenWeatherMap (con la tua chiave
   API). Il fornitore vede il tuo indirizzo IP; non viene inviato altro. Base giuridica: consenso (art. 6(1)(a) GDPR),
