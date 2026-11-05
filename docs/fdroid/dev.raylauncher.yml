@@ -1,0 +1,34 @@
+# Recipe for fdroiddata (metadata/dev.raylauncher.yml). No Gradle: plain build.sh with the SDK tools.
+# Before opening the merge request: set commit to the release tag and CurrentVersion/CurrentVersionCode to its manifest.
+Categories:
+  - System
+  - Connectivity
+License: MIT
+AuthorName: MadeinTaly
+SourceCode: https://github.com/MadeinTaly/ray-launcher
+IssueTracker: https://github.com/MadeinTaly/ray-launcher/issues
+Changelog: https://github.com/MadeinTaly/ray-launcher/releases
+
+AutoName: RAY
+
+RepoType: git
+Repo: https://github.com/MadeinTaly/ray-launcher.git
+
+Builds:
+  - versionName: 0.5.0-beta.1
+    versionCode: 34
+    commit: v0.5.0-beta.1
+    submodules: true
+    sudo:
+      - apt-get update
+      - apt-get install -y openjdk-17-jdk-headless
+    output: build/aligned.apk
+    build:
+      - export BUILD_TOOLS=$$SDK$$/build-tools/35.0.0
+      - export ANDROID_JAR=$$SDK$$/platforms/android-35/android.jar
+      - SIGN=0 ./build.sh
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags
+CurrentVersion: 0.5.0-beta.1
+CurrentVersionCode: 34

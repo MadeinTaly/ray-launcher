@@ -28,13 +28,17 @@ final class Discovery implements NsdManager.DiscoveryListener, NsdManager.Resolv
 
     private final NsdManager nsd;
     private final WifiManager.MulticastLock lock;
+    private static final java.util.Set<String> PENDING = new java.util.HashSet<>();
+
     private final SharedPreferences prefs;
+    private final Runnable moved; // called on a background thread after a saved TV was moved to a new address
     private final ArrayDeque<NsdServiceInfo> queue = new ArrayDeque<>();
     private boolean running;
     private boolean resolving;
 
-    Discovery(Context context, SharedPreferences prefs) {
+    Discovery(Context context, SharedPreferences prefs, Runnable moved) {
         this.prefs = prefs;
+        this.moved = moved;
         nsd = (NsdManager) context.getSystemService(Context.NSD_SERVICE);
         WifiManager wifi = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         lock = wifi == null ? null : wifi.createMulticastLock("ray-discovery");
@@ -142,7 +146,7 @@ final class Discovery implements NsdManager.DiscoveryListener, NsdManager.Resolv
         next();
     }
 
-    private void found(String id, String name, String type, String host, int port) {
+    private void found(final String id, String name, String type, final String host, final int port) {
         if (!id.matches("[0-9a-f]{1,32}")) return;
         try {
             JSONObject d = new JSONObject().put("id", id).put("name", Devices.cleanName(name)).put("type", type)
@@ -159,9 +163,42 @@ final class Discovery implements NsdManager.DiscoveryListener, NsdManager.Resolv
             JSONObject s = saved.optJSONObject(i);
             if (s == null || !id.equals(s.optString("did"))) continue;
             if (!s.optString("host").equals(host) || s.optInt("port") != port) {
-                String old = s.optString("host") + ":" + s.optInt("port");
-                Devices.move(prefs, s.optString("host"), s.optInt("port"), host);
-                AppApi.noteMoved(old, host + ":" + s.optInt("port"));
+                final String oldHost = s.optString("host"), key = s.optString("key"), pend = id + "@" + host + ":" + port;
+                final int oldPort = s.optInt("port");
+                synchronized (PENDING) {
+                    if (!PENDING.add(pend)) continue;
+                }
+                // the announcement is unauthenticated: move only once the new address proves it holds the key
+                Thread t = new Thread(new Runnable() {
+                    @Override public void run() {
+                        try {
+                            // the key never goes to an address not proved yet: the TV answers with a hash only it can make
+                            byte[] random = new byte[16];
+                            new java.security.SecureRandom().nextBytes(random);
+                            StringBuilder nonce = new StringBuilder();
+                            for (byte x : random) nonce.append(String.format("%02x", x));
+                            byte[] ask = new JSONObject().put("n", nonce.toString()).toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                            Object[] r = AppApi.call(host, port, "", "/api/proof", "POST", ask, ask.length);
+                            byte[] b = (byte[]) r[1];
+                            if ((Integer) r[0] != 200 || !java.security.MessageDigest.isEqual(PinGate.proof(key, nonce.toString(), host).getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                                    new JSONObject(AppApi.text(b, b.length)).optString("proof").getBytes(java.nio.charset.StandardCharsets.UTF_8))) return;
+                            String old = oldHost + ":" + oldPort;
+                            Devices.move(prefs, oldHost, oldPort, host);
+                            AppApi.noteMoved(old, host + ":" + oldPort);
+                            if (old.equals(prefs.getString(PhoneActivity.LAST_DEVICE, "")))
+                                prefs.edit().putString(PhoneActivity.LAST_DEVICE, host + ":" + oldPort).commit();
+                            moved.run();
+                        } catch (java.io.IOException | JSONException e) {
+                            // not that device (or not answering): keep the saved address
+                        } finally {
+                            synchronized (PENDING) {
+                                PENDING.remove(pend);
+                            }
+                        }
+                    }
+                }, "ray-move");
+                t.setDaemon(true);
+                t.start();
             }
         }
     }

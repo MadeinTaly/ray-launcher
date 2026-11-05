@@ -15,7 +15,11 @@ AAPT=$(tool aapt)
 ZIPALIGN=$(tool zipalign)
 KEYSTORE=${KEYSTORE:-debug.keystore}
 SIGN=${SIGN:-1}   # SIGN=0: stop at the unsigned, aligned APK (build/aligned.apk), e.g. for F-Droid
-OUT=build
+DEV=${DEV:-0}     # DEV=1: debuggable build (adb run-as works); never publish it
+FDROID=${FDROID:-}  # FDROID=1: leave the updater out of the manifest; default on when SIGN=0
+[ -n "$FDROID" ] || { [ "$SIGN" = 0 ] && FDROID=1 || FDROID=0; }
+OUT=${OUT:-build}
+APK=${APK:-ray-launcher.apk}
 
 if [ ! -f vendor/dayrhythm/src/index.js ]; then
     echo "vendor/dayrhythm is missing: run 'git submodule update --init' first" >&2
@@ -38,7 +42,14 @@ else
     "$DX" --dex --output="$OUT/classes.dex" "$OUT/classes"
 fi
 
-"$AAPT" package -f -M app/AndroidManifest.xml -S app/res -A "$OUT/assets" -I "$ANDROID_JAR" -F "$OUT/unsigned.apk"
+MANIFEST=app/AndroidManifest.xml
+if [ "$FDROID" = 1 ]; then
+    echo "F-Droid build: updater excluded"
+    MANIFEST="$OUT/AndroidManifest.xml"
+    sed -e '/REQUEST_INSTALL_PACKAGES/d' -e '/Updater\$Done/d' app/AndroidManifest.xml > "$MANIFEST"
+fi
+DEBUG_MODE=(); [ "$DEV" = 1 ] && DEBUG_MODE=(--debug-mode)
+"$AAPT" package -f ${DEBUG_MODE[@]+"${DEBUG_MODE[@]}"} -M "$MANIFEST" -S app/res -A "$OUT/assets" -I "$ANDROID_JAR" -F "$OUT/unsigned.apk"
 (cd "$OUT" && "$AAPT" add unsigned.apk classes.dex >/dev/null)
 "$ZIPALIGN" -f 4 "$OUT/unsigned.apk" "$OUT/aligned.apk"
 if [ "$SIGN" = 0 ]; then
@@ -52,5 +63,5 @@ if [ ! -f "$KEYSTORE" ]; then
         -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=raylauncher" >/dev/null 2>&1
 fi
 "$APKSIGNER" sign --ks "$KEYSTORE" --ks-pass pass:android --key-pass pass:android \
-    --out ray-launcher.apk "$OUT/aligned.apk"
-echo "built ray-launcher.apk ($(wc -c < ray-launcher.apk) bytes)"
+    --out "$APK" "$OUT/aligned.apk"
+echo "built $APK ($(wc -c < "$APK") bytes)"

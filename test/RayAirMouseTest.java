@@ -29,6 +29,35 @@ public class RayAirMouseTest {
         u.gyro(0, 0, 0, t, 100);
         t += 5_000_000;
         check(u.gyro(0, 1f, 0, t, 100) && u.dx < 0, "upright yaw");
+        t += 5_000_000;
+        check(u.gyro(1f, 0, 0, t, 100) && u.dy < 0 && Math.abs(u.dx) < 1e-3, "upright pitch");
+        // on its side, volume keys up (up = +x, top edge at the TV): yaw from wx, pitch from wz, axes independent
+        RayMotionMath.Integrator sd = new RayMotionMath.Integrator();
+        for (int i = 0; i < 50; i++) sd.gravity(9.8f, 0, 0);
+        long tw = 1_000_000_000L;
+        sd.gyro(0, 0, 0, tw, 100);
+        tw += 5_000_000;
+        check(sd.gyro(1f, 0, 0, tw, 100) && sd.dx < 0 && Math.abs(sd.dy) < 1e-3, "side yaw only");
+        tw += 5_000_000;
+        check(sd.gyro(0, 0, -1f, tw, 100) && sd.dy < 0 && Math.abs(sd.dx) < 1e-3, "side nose up"); // right = -z
+        // other side (up = -x): same screen directions
+        RayMotionMath.Integrator o = new RayMotionMath.Integrator();
+        for (int i = 0; i < 50; i++) o.gravity(-9.8f, 0, 0);
+        tw = 1_000_000_000L;
+        o.gyro(0, 0, 0, tw, 100);
+        tw += 5_000_000;
+        check(o.gyro(-1f, 0, 0, tw, 100) && o.dx < 0 && Math.abs(o.dy) < 1e-3, "other side yaw");
+        tw += 5_000_000;
+        check(o.gyro(0, 0, 1f, tw, 100) && o.dy < 0 && Math.abs(o.dx) < 1e-3, "other side nose up");
+        // flat with gravity known: same as no gravity
+        RayMotionMath.Integrator f = new RayMotionMath.Integrator();
+        for (int i = 0; i < 50; i++) f.gravity(0, 0, 9.8f);
+        tw = 1_000_000_000L;
+        f.gyro(0, 0, 0, tw, 100);
+        tw += 5_000_000;
+        check(f.gyro(1f, 0, 0, tw, 100) && f.dy < 0 && Math.abs(f.dx) < 1e-3, "flat pitch");
+        tw += 5_000_000;
+        check(f.gyro(0, 0, 1f, tw, 100) && f.dx < 0 && Math.abs(f.dy) < 1e-3, "flat yaw");
         // a pause longer than 50 ms must not integrate
         t += 500_000_000L;
         check(!u.gyro(0, 5f, 0, t, 100), "gap");

@@ -1,0 +1,9 @@
+* Nuova home: continua a guardare sopra, app sotto, Tutte le app apre una griglia completa. Il telefono è facoltativo: niente lo chiede
+* Tre temi: Orizzonte con sfondo 3D animato (sole di giorno, luna di notte, solo dove il dispositivo regge), Rivista, Lacca
+* Nuova schermata impostazioni sulla TV, nuova app telefono: Telecomando, Sul TV con controlli di riproduzione, continua a guardare e proposti per app, Impostazioni
+* Abbinamento con codice a 4 cifre, si ricollega da solo se la TV cambia indirizzo
+* Air mouse corretto comunque tieni il telefono; con Movimento attivo i tasti volume selezionano e ricentrano
+* Nuova icona
+* Ricerca unica: scrivi o di' un titolo (dove il dispositivo ha il riconoscimento vocale), poi cerca dentro ogni app che lo accetta
+* Accesso completo (opzionale, una pressione, sui dispositivi con ADB aperto): continua a guardare e proposti di ogni app, cosa è in riproduzione, il telefono che comanda sopra le app
+* Avvio più rapido e meno memoria sui box piccoli; sfondo animato solo dove il dispositivo regge

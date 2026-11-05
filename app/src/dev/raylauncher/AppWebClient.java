@@ -3,6 +3,9 @@ package dev.raylauncher;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.net.Uri;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceError;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
@@ -27,30 +30,32 @@ final class AppWebClient extends WebViewClient {
             return true;
         }
         if (url.equals(origin) || url.startsWith(origin + "/")) return false;
-        if ("raylauncher".equals(uri.getScheme())) { // pairing link from the RAY connect screen (found TV + its code)
-            activity.addPairingLink(url);
-            return true;
-        }
         if (url.startsWith("raylauncher-app://")) {
-            activity.appAction(Uri.parse(url).getHost());
+            if (activity.isRayPageUrl(view.getUrl()) || origin.startsWith("http://127.0.0.1:"))
+                activity.appAction(url.substring("raylauncher-app://".length()));
             return true;
         }
+        String scheme = uri.getScheme();
+        if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) return true; // a page opens web links, nothing else
         try {
-            activity.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)).addCategory(Intent.CATEGORY_BROWSABLE));
-        } catch (ActivityNotFoundException ignored) {
+            activity.startActivity(new Intent(Intent.ACTION_VIEW, uri).addCategory(Intent.CATEGORY_BROWSABLE));
+        } catch (RuntimeException ignored) {
         }
         return true;
     }
 
+    /** Only the page itself: a failing image or script must not reload anything. */
     @Override
-    public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-        if (failingUrl != null && failingUrl.startsWith(origin)) activity.loadFailed();
+    public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+        if (request.isForMainFrame() && request.getUrl().toString().startsWith(origin)) activity.loadFailed();
     }
 
-    /** A 404/5xx on the page itself (server not up yet, stale server) would show its raw text: retry instead. */
+    /** 403 on the page: the TV does not accept this phone's key; 404/5xx would show raw text. */
     @Override
-    public void onReceivedHttpError(WebView view, android.webkit.WebResourceRequest request, android.webkit.WebResourceResponse response) {
-        if (request.isForMainFrame() && response.getStatusCode() >= 400) activity.loadFailed();
+    public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse response) {
+        if (!request.isForMainFrame() || !request.getUrl().toString().startsWith(origin)) return;
+        if (response.getStatusCode() == 403) activity.keyRejected();
+        else if (response.getStatusCode() >= 400) activity.loadFailed();
     }
 
     @Override

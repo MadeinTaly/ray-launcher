@@ -57,6 +57,24 @@ final class RayDemo {
         return out;
     }
 
+    /**
+     * Per-app lists for the phone's "On TV" tab in demo mode: any app in front gets sample "continue" and "suggested"
+     * items whose intent opens that app (so opening one is a real launch). Recommendations of real apps are not touched.
+     */
+    static RayMedia.Lists appLists(Context context, String pkg) {
+        RayMedia.Lists lists = new RayMedia.Lists();
+        android.content.Intent launch = context.getPackageManager().getLaunchIntentForPackage(pkg);
+        String intent = launch == null ? "" : launch.toUri(android.content.Intent.URI_INTENT_SCHEME);
+        for (int i = 0; i < 5; i++) {
+            RayWatchHistory.Entry e = new RayWatchHistory.Entry(i < 2 ? TITLES[i] : "Pick " + (i - 1), pkg, intent, scene(i, 640, 360));
+            e.id = (i < 2 ? "wn:" : "pp:") + (i + 1);
+            e.description = SUBS[i];
+            if (i < 2) { e.progress = PROGRESS[i]; e.minutesLeft = 12 + 17 * i; lists.cont.add(e); }
+            else lists.sugg.add(e);
+        }
+        return lists;
+    }
+
     /** Banner for the n-th sample app: coloured gradient, simple glyph, name. */
     static Drawable app(int n) {
         int w = 640, h = 360;

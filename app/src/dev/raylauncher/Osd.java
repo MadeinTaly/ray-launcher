@@ -39,10 +39,22 @@ final class Osd implements Runnable {
     }
 
     /** Shows (or updates) the display: a label, a value and, with percent 0-100, a bar; -1 = no bar. */
-    void show(String labelText, String valueText, int percent) {
-        if (box == null && !attach()) return;
+    boolean show(String labelText, String valueText, int percent) {
+        return show(labelText, valueText, percent, SHOW_MS);
+    }
+
+    /** The pairing code, large, for ms: false when no overlay can be drawn. */
+    boolean showPin(String labelText, String pin, long ms) {
+        boolean shown = show(labelText, pin, -1, ms);
+        if (shown) value.setTextSize(TypedValue.COMPLEX_UNIT_SP, 64);
+        return shown;
+    }
+
+    private boolean show(String labelText, String valueText, int percent, long ms) {
+        if (box == null && !attach()) return false;
         label.setText(labelText);
         value.setText(valueText);
+        value.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
         if (percent >= 0) {
             int p = Math.max(0, Math.min(100, percent));
             fill.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, Math.max(p, 0.001f)));
@@ -52,7 +64,8 @@ final class Osd implements Runnable {
             bar.setVisibility(View.GONE);
         }
         main.removeCallbacks(this);
-        main.postDelayed(this, SHOW_MS);
+        main.postDelayed(this, ms);
+        return true;
     }
 
     /** Runnable: hides the display. */

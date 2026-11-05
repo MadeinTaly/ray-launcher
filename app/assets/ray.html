@@ -1,214 +1,527 @@
 <!doctype html>
 <html lang="en">
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#020b19"><title>RAY</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#080d15"><title>RAY</title>
 <style>
-/* Theme tokens: liquid glass by default, graphite + orange when the TV skin is metal (html[data-skin]) */
-:root{color-scheme:dark;--accent:#24dcff;--accent2:#3d8bff;--ink:#eaf7ff;--muted:#95b8d2;--line:rgb(130 205 255/22%);--line2:rgb(130 205 255/45%);--glow:rgb(0 180 255/45%);
- --bg1:#09284a;--bg2:#04152a;--bg3:#020916;--glass-a:rgb(70 150 230/24%);--glass-b:rgb(6 26 52/62%);--solid:#071c31;--ok:#3dffb0;--bad:#ff7b7b;
+/* Tokens. --accent follows the TV skin (set from the page script); everything else is derived from these. */
+:root{color-scheme:dark;--accent:#edb980;--on-accent:#1b1308;--ink:#ece8e1;--muted:#a3a9b3;--bg:#080d15;--surface:#111a26;--surface2:#1a2636;--line:rgb(255 255 255/12%);
+ --line2:color-mix(in srgb,var(--accent) 55%,transparent);--tint:color-mix(in srgb,var(--accent) 16%,transparent);--ok:#7fc7a0;--bad:#ff8a80;--focus:#fff;--cube-a:#00cdfe;--cube-b:#ff70ce;
  --font:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-html[data-skin=metal]{--accent:#ff8f2e;--accent2:#ffb15c;--ink:#f4efe9;--muted:#b3a89c;--line:rgb(255 255 255/14%);--line2:rgb(255 160 80/55%);--glow:rgb(255 130 30/40%);
- --bg1:#2a2d33;--bg2:#15171b;--bg3:#0a0b0d;--glass-a:rgb(200 205 215/16%);--glass-b:rgb(20 22 26/70%);--solid:#1a1c20}
-html[data-skin=lanterna]{--accent:#ffb347;--accent2:#ffd08a;--ink:#fff6e6;--muted:#d6c3a3;--line:rgb(255 230 190/16%);--line2:rgb(255 190 110/55%);--glow:rgb(255 170 60/38%);
- --bg1:#3a2a4a;--bg2:#1e1630;--bg3:#0e0a18;--glass-a:rgb(255 225 180/16%);--glass-b:rgb(30 20 40/68%);--solid:#221a30}
-html[data-skin=astrolabio]{--accent:#ffc35a;--accent2:#ffe09a;--ink:#fbf3df;--muted:#c9b98f;--line:rgb(255 220 150/15%);--line2:rgb(255 200 90/55%);--glow:rgb(255 190 70/36%);
- --bg1:#13285a;--bg2:#0a1636;--bg3:#050b1d;--glass-a:rgb(255 210 120/14%);--glass-b:rgb(8 18 44/70%);--solid:#0c1a3c}
-/* generated background art per skin (assets/remote), dimmed so the controls stay readable */
-html[data-art] body{background:linear-gradient(rgb(0 0 0/38%),rgb(0 0 0/52%)),var(--art) center/cover no-repeat fixed,var(--bg3)}
+html.day{--cube-a:#ffb054;--cube-b:#ec3e3a}
+@font-face{font-family:'Chakra Petch';src:url(/fonts/ChakraPetch-SemiBold.ttf) format('truetype');font-weight:500;font-display:swap}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html{background:var(--bg3)}
-body{margin:0;min-height:100dvh;overflow-x:hidden;color:var(--ink);font:16px/1.35 var(--font);-webkit-font-smoothing:antialiased;overscroll-behavior-y:none;
- background:radial-gradient(ellipse 90% 50% at 50% 58%,var(--bg1) 0,var(--bg2) 48%,var(--bg3) 82%) fixed}
-body:before{content:"";position:fixed;z-index:-1;pointer-events:none;left:-30vw;right:-30vw;top:52%;height:46vh;border:1px solid var(--accent2);border-radius:50%;opacity:.3;
- filter:drop-shadow(0 0 14px var(--glow));transform:rotate(-8deg)}
-body:after{content:"";position:fixed;z-index:-1;pointer-events:none;left:-20vw;right:-20vw;top:-18vh;height:42vh;border-radius:50%;background:radial-gradient(closest-side,var(--glow),transparent);opacity:.35}
+html{background:var(--bg)}
+html,body{overflow-x:clip}
+body{margin:0;min-height:100dvh;color:var(--ink);font:16px/1.35 var(--font);-webkit-font-smoothing:antialiased;overscroll-behavior-y:none;background:var(--bg)}
 button,input,select{font:inherit;color:inherit}
-button{touch-action:manipulation;cursor:pointer;-webkit-user-select:none;user-select:none;transition:transform .12s ease,box-shadow .18s ease,background .18s ease,border-color .18s ease,color .18s ease}
-button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #fff;outline-offset:3px}
+button{touch-action:manipulation;cursor:pointer;-webkit-user-select:none;user-select:none;transition:transform .12s ease}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,[role=switch]:focus-visible{outline:2px solid var(--focus);outline-offset:3px}
 button:disabled{opacity:.35;cursor:not-allowed}
 a{color:var(--accent)}
 [hidden]{display:none!important}
 svg{fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
-
-/* shared glass surface + haptic-like press */
-.circle,.volume button,.keys,.now-ctl button,.now-search input,.now-search button,.sug button,.apps button,.setting-button,.theme-controls input,.theme-controls select,.offline,.now-head img,.tabs button{
- background:linear-gradient(155deg,var(--glass-a),var(--glass-b));border:1px solid var(--line);box-shadow:inset 0 1px 0 rgb(255 255 255/16%),0 8px 22px rgb(0 0 0/30%)}
-.circle:active,.volume button:active,.now-ctl button:active,.now-search button:active,.sug button:active,.apps button:active,.setting-button:active,.keys button:active{transform:scale(.92);border-color:var(--accent);box-shadow:inset 0 0 18px var(--glow),0 0 22px var(--glow)}
-.quick button:active{transform:none}.quick button:active .circle{transform:scale(.92);border-color:var(--accent);box-shadow:inset 0 0 18px var(--glow),0 0 22px var(--glow)}
-
-main{width:min(100%,480px);min-height:100dvh;margin:auto;padding:calc(14px + env(safe-area-inset-top)) 18px calc(104px + env(safe-area-inset-bottom));display:flex;flex-direction:column}
-.brand{height:72px;flex:none;display:grid;place-items:center;align-content:center;gap:0}
-.brandmark{width:96px;height:34px;color:var(--accent);filter:drop-shadow(0 0 10px var(--glow))}
-h1{margin:0;color:var(--accent);letter-spacing:.42em;font-size:22px;font-weight:600;padding-left:.42em;text-shadow:0 0 18px var(--glow)}
-.status{display:flex;align-items:center;justify-content:center;gap:8px;width:max-content;max-width:100%;margin:2px auto 16px;min-height:28px;padding:4px 14px;border:1px solid var(--line);border-radius:999px;background:rgb(255 255 255/5%);color:var(--muted);font-size:12px;letter-spacing:.02em}
-.status:before{content:"";flex:none;width:8px;height:8px;border-radius:50%;background:var(--muted)}
-#getApk{border:0;background:none;margin:-6px auto 6px;min-height:0;padding:0;text-align:center;display:block;width:auto}
-#getApk:before{display:none}
-body[data-conn=ok] #status:before{background:var(--ok);box-shadow:0 0 9px var(--ok)}
-body[data-conn=down] #status{color:#ffd0d0;border-color:rgb(255 123 123/40%)}
-body[data-conn=down] #status:before{background:var(--bad);box-shadow:0 0 9px var(--bad)}
-body[data-conn=wait] #status:before{width:12px;height:12px;background:none;border:2px solid var(--line2);border-top-color:var(--accent);animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-@keyframes late{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+main{position:relative;width:min(100%,480px);min-height:100dvh;margin:auto;padding:calc(14px + env(safe-area-inset-top)) 18px calc(104px + env(safe-area-inset-bottom));display:flex;flex-direction:column}
+.brand{position:relative;height:72px;flex:none;display:grid;justify-items:start;align-content:center;gap:2px}
+.brandmark{width:96px;height:34px;color:var(--accent)}
+h1{margin:0;color:var(--accent);font-size:22px;font-weight:600}
+/* the TV in use: name and state; opens the TV chooser */
+.tvbtn{position:absolute;right:0;top:50%;margin-top:-24px;max-width:46%;min-height:48px;display:flex;align-items:center;gap:8px;padding:0 4px 0 10px;border:0;background:none;color:var(--ink);font-size:14px}
+.tvbtn:active{transform:scale(.95)}
+.tvbtn span{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.tvbtn:before{content:"";flex:none;width:8px;height:8px;border-radius:50%;background:var(--muted)}
+body[data-conn=ok] .tvbtn:before{background:var(--ok)}
+body[data-conn=down] .tvbtn:before{background:var(--bad)}
+body[data-conn=wait] .tvbtn:before{width:12px;height:12px;background:none;border:2px solid var(--line2);border-top-color:var(--accent);animation:spin .8s linear infinite}
+.status{display:flex;align-items:center;justify-content:center;width:max-content;max-width:100%;margin:2px auto 16px;min-height:28px;padding:4px 14px;border-radius:999px;background:var(--surface);color:var(--muted);font-size:12px}
+#getApk{background:none;margin:-6px auto 6px;min-height:0;padding:0;text-align:center;display:block;width:auto}
+body[data-conn=down] #status{color:var(--bad)}
 
 /* connecting / TV not found */
-.offline{display:grid;justify-items:center;gap:6px;text-align:center;border-radius:22px;padding:20px 18px;margin:0 0 16px;animation:late .35s 2.4s both}
+.offline{display:grid;justify-items:center;gap:6px;text-align:center;border-radius:20px;padding:20px 18px;margin:0 0 16px;background:var(--surface)}
 .offline b{font-size:18px;font-weight:600}.offline span{color:var(--muted);font-size:13px}
-.offline button{margin-top:10px;min-height:48px;padding:0 28px;border-radius:999px;border:1px solid var(--accent);background:linear-gradient(180deg,var(--glow),transparent);color:var(--ink);font-weight:600}
-body[data-conn=wait] #remote,body[data-conn=wait] #apps,body[data-conn=down] #remote,body[data-conn=down] #apps{opacity:.4;pointer-events:none;filter:saturate(.6)}
+.offline button{margin-top:10px;min-height:48px;padding:0 28px;border-radius:999px;border:0;background:var(--accent);color:var(--on-accent);font-weight:600}
+body[data-tab]:not([data-tab=remote]) .motion-row,body[data-tab]:not([data-tab=remote]) .motion-state{display:none}
+body[data-conn=wait] #remote,body[data-conn=wait] #tv,body[data-conn=down] #remote,body[data-conn=down] #tv{opacity:.4;pointer-events:none}
 
-.tabs{display:flex;gap:9px;margin:0 auto 18px}
-.motion-toggle{display:none;margin:-4px auto 12px;min-height:40px;border:1px solid var(--line2);background:rgb(255 255 255/5%);border-radius:999px;color:var(--accent);padding:0 16px;font-size:13px}
+.motion-toggle{display:none;margin:-4px auto 12px;min-height:40px;border:1px solid var(--line2);background:none;border-radius:999px;color:var(--accent);padding:0 16px;font-size:13px}
 .native-motion .motion-toggle{display:block}
 .motion-row{display:flex;justify-content:center;gap:8px}#recenter{color:var(--ink)}.motion-row .motion-toggle{margin:-4px 0 12px}
-.motion-toggle[aria-pressed=true]{background:var(--glow);color:#fff}
+.motion-toggle[aria-pressed=true]{background:var(--accent);color:var(--on-accent)}
 .motion-state{text-align:center;color:var(--muted);font-size:12px;margin:-5px 0 10px}
 
 .panel{display:none}.panel.active{display:block;animation:rise .3s ease both}
-/* remote: controls sit low near the thumb */
+/* remote: controls sit low near the thumb. Geometry of this tab is fixed (muscle memory): do not change sizes, order or position. */
 #remote.active{display:flex;flex-direction:column;flex:1}#remote>*{flex:none;width:100%}#remote .media{margin-top:auto}
-
-/* remote */
-.circle{border-radius:50%;display:grid;place-items:center;color:#fff}
+.circle{border-radius:50%;display:grid;place-items:center;color:var(--ink);background:var(--surface);border:1px solid var(--line)}
+.circle:active,.volume button:active{transform:scale(.92);border-color:var(--accent)}
 .media{display:flex;align-items:center;justify-content:center;gap:clamp(14px,5vw,28px);margin:2px 0 22px}
 .media button{width:clamp(68px,19vw,80px);height:clamp(68px,19vw,80px)}
-.media button:nth-child(2){width:clamp(80px,23vw,94px);height:clamp(80px,23vw,94px);border:2px solid var(--accent);box-shadow:inset 0 0 22px var(--glow),0 0 24px var(--glow)}
-.media svg,.quick svg,.nav svg,.now-ctl svg{width:28px;height:28px}
+.media button:nth-child(2){width:clamp(80px,23vw,94px);height:clamp(80px,23vw,94px);border:2px solid var(--accent)}
+.media svg,.quick svg{width:28px;height:28px}
 .quick{display:flex;justify-content:center;gap:clamp(24px,9vw,46px);margin-bottom:24px}
-.quick button{border:0;background:none;padding:0;color:var(--muted);display:grid;justify-items:center;gap:8px;font-size:12px;letter-spacing:.04em}
+.quick button{border:0;background:none;padding:0;color:var(--muted);display:grid;justify-items:center;gap:8px;font-size:12px}
+.quick button:active{transform:none}.quick button:active .circle{transform:scale(.92);border-color:var(--accent)}
 .quick .circle{width:clamp(64px,19vw,76px);height:clamp(64px,19vw,76px)}.quick svg{width:30px;height:30px}
-
 .dpad-wrap{display:flex;justify-content:center;align-items:center;gap:14px;margin:0 auto 18px;max-width:100%}
-.keys{position:relative;flex:1;min-width:0;max-width:280px;aspect-ratio:1;border-radius:50%;border:2px solid var(--accent);box-shadow:0 0 26px var(--glow),inset 0 0 34px var(--glow),inset 0 1px 0 rgb(255 255 255/18%)}
+.keys{position:relative;flex:1;min-width:0;max-width:280px;aspect-ratio:1;border-radius:50%;border:2px solid var(--accent);background:var(--surface)}
 .keys span{display:none}
-.keys button{position:absolute;width:22%;height:22%;border:0;background:none;border-radius:50%;padding:0;color:#d6f1ff;display:grid;place-items:center}
+.keys button{position:absolute;width:22%;height:22%;border:0;background:none;border-radius:50%;padding:0;color:var(--ink);display:grid;place-items:center}
 .keys button svg{width:26px;height:26px}
 .keys [data-c=up]{left:39%;top:3%}.keys [data-c=down]{left:39%;bottom:3%}.keys [data-c=left]{left:3%;top:39%}.keys [data-c=right]{right:3%;top:39%}
-.keys button:active{background:radial-gradient(circle,var(--glow),transparent 70%);color:var(--accent)}
-.keys [data-c=ok]{left:27%;top:27%;width:46%;height:46%;font-size:26px;font-weight:700;letter-spacing:.06em;color:#fff;border:1px solid var(--line2);
- background:radial-gradient(circle at 50% 35%,rgb(255 255 255/18%),var(--glow) 55%,rgb(0 0 0/25%));box-shadow:0 0 18px var(--glow),inset 0 1px 0 rgb(255 255 255/30%)}
-.volume{display:grid;gap:8px;justify-items:center;flex:none;padding:8px;border-radius:24px;background:linear-gradient(180deg,var(--glass-a),transparent);border:1px solid var(--line)}
-.volume button{width:56px;height:56px;border-radius:18px;font-size:28px;line-height:1;color:#fff}
-.volume span{font-size:11px;color:var(--muted);text-align:center;letter-spacing:.06em;text-transform:uppercase}.volume b{font-size:18px;color:var(--ink)}
+.keys button:active{background:var(--tint);color:var(--accent);transform:scale(.92)}
+.keys [data-c=ok]{left:27%;top:27%;width:46%;height:46%;font-size:26px;font-weight:700;color:var(--on-accent);background:var(--accent)}
+.keys [data-c=ok]:active{color:var(--on-accent);background:var(--accent)}
+.volume{display:grid;gap:8px;justify-items:center;flex:none;padding:8px;border-radius:24px;background:var(--surface);border:1px solid var(--line)}
+.volume button{width:56px;height:56px;border-radius:18px;font-size:28px;line-height:1;color:var(--ink);background:var(--surface2);border:1px solid var(--line)}
+.volume span{font-size:11px;color:var(--muted);text-align:center}.volume b{font-size:18px;color:var(--ink)}
 
-/* forms */
-.control{margin:16px 0 6px}.control label{display:flex;justify-content:space-between;color:var(--muted);font-size:13px;margin-bottom:6px}
-input[type=range]{width:100%;height:32px;accent-color:var(--accent)}
-.focus,.device-name{color:var(--muted);font-size:13px}
-.settings{display:grid;gap:14px}
-.setting-button{width:100%;min-height:52px;padding:12px 16px;border-radius:16px;text-align:left;color:var(--ink);font-weight:500}
-.apps{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:10px}
-.apps button{min-height:52px;padding:10px 12px;border-radius:16px;text-align:center;color:var(--ink);font-weight:500;overflow-wrap:anywhere}
-.theme-controls{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
-.theme-controls label{display:grid;gap:7px;color:var(--muted);font-size:13px}
-.theme-controls input,.theme-controls select{width:100%;min-width:0;min-height:48px;border-radius:12px;color:var(--ink);padding:8px 10px}
-.theme-controls input[type=color]{padding:5px}
-.theme-controls select option{background:#071c31;color:#eaf7ff}
-.theme-controls .apps{grid-column:1/-1}
-#vpnStatus{margin:0 0 8px;color:var(--muted);font-size:13px}
-#deviceLink,#deviceLinkAlt{display:inline-block;padding:10px 0;font-weight:500}
+/* shared pieces of On TV and Settings */
+.btn{min-height:48px;padding:0 18px;border-radius:999px;border:1px solid var(--line2);background:none;color:var(--ink);font-weight:500;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+.btn:active{transform:scale(.96)}
+.btn.main{background:var(--accent);color:var(--on-accent);border-color:transparent;font-weight:600}
+.btn svg{width:20px;height:20px;flex:none}
+.sel,.txt{width:100%;min-width:0;min-height:48px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:0 12px}
+.sel option{background:var(--surface);color:var(--ink)}
+input[type=range]{width:100%;min-height:48px;accent-color:var(--accent)}
+h2,h3{margin:0;font-weight:600}
+h3{font-size:18px}
 
-/* app companion */
-.now{display:grid;gap:16px;animation:rise .3s ease both}
-.now-head{display:grid;gap:14px;justify-items:center;text-align:center}
-.now-head img{width:min(72%,260px);aspect-ratio:16/9;object-fit:cover;border-radius:20px;box-shadow:0 14px 40px rgb(0 0 0/50%),0 0 30px var(--glow)}
-.now-head h2{font-size:20px;font-weight:600;margin:2px 0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-.now-head p{margin:0}.now-head>div{min-width:0;max-width:100%}
-.now-bar{display:flex;gap:10px;align-items:center;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}.now-bar input{flex:1;min-width:0}
-.now-ctl{display:flex;justify-content:space-between;align-items:center;gap:8px}
-html,body{overflow-x:clip}
-.now-ctl button{padding:0}
-.now-ctl button{flex:1;min-width:0;min-height:56px;border-radius:18px;font-size:15px;font-weight:600;display:grid;place-items:center}
-.now-ctl #nowPlay{flex:none;width:76px;height:76px;border-radius:50%;border:2px solid var(--accent);box-shadow:inset 0 0 20px var(--glow),0 0 24px var(--glow)}
-#nowPlay svg{width:30px;height:30px;fill:currentColor;stroke:none}#nowPlay .i-pause{display:none}#nowPlay.on .i-pause{display:block}#nowPlay.on .i-play{display:none}
-.now-ctl svg{fill:currentColor;stroke:currentColor;stroke-width:2.4}
-.now-search{display:flex;gap:8px}
-.now-search input{flex:1;min-width:0;min-height:52px;border-radius:999px;padding:0 18px;font:inherit}
-.now-search input::placeholder{color:var(--muted)}
-.now-search button{width:56px;min-height:52px;border-radius:50%;display:grid;place-items:center;padding:0}.now-search svg{width:22px;height:22px}
-.sug{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.sug button{border-radius:16px;padding:0;overflow:hidden;text-align:left;font-size:12px}
-.sug img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;background:var(--bg3)}
-.sug span{display:block;padding:8px 10px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-#nowSugTitle:empty,.now-head img[style*="hidden"],.sug img:not([src]){display:none}
-#nowSugTitle,#nowHint{margin:0}
+/* On TV */
+.stack{display:grid;grid-template-columns:minmax(0,1fr);gap:22px;animation:rise .3s ease both}
+.hero{display:grid;gap:10px}
+.now{display:flex;align-items:center;gap:12px}.now>div{min-width:0}
+.now .thumb{flex:none;width:96px;aspect-ratio:16/9;object-fit:cover;border-radius:10px;background:var(--surface)}
+.now h2{font-size:20px;line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.now p{margin:2px 0 0;color:var(--muted);font-size:14px}
+.hero.big{justify-items:center;text-align:center}.hero.big .ic{width:96px;height:96px;border-radius:24px;font-size:42px}
+.ic{position:relative;flex:none;display:grid;place-items:center;overflow:hidden;background:var(--surface2);color:var(--accent);font-weight:700}
+.ic img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.bar{display:flex;gap:10px;align-items:center;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}.bar input{flex:1;min-width:0}
+.ctl{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.ctl button{flex:1;min-width:0;min-height:56px;border-radius:16px;border:0;background:var(--surface);font-size:15px;font-weight:600;display:grid;place-items:center;padding:0}
+.ctl button:active{transform:scale(.94)}
+.ctl svg{width:26px;height:26px}
+.ctl2{justify-content:center;margin-top:6px}.ctl2 button{flex:0 1 96px;min-height:48px}
+.ctl #tvToggle{flex:none;width:72px;height:72px;border-radius:50%;background:var(--accent);color:var(--on-accent)}
+#tvToggle .i-pause{display:none}#tvToggle.on .i-pause{display:block}#tvToggle.on .i-play{display:none}
+.search{display:flex;gap:8px}
+.search .txt{flex:1;border-radius:999px;padding:0 18px}
+.search .txt::placeholder{color:var(--muted)}
+.search button{flex:none;width:48px;height:48px;padding:0;border-radius:50%}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 12px}
+.tile{display:grid;align-content:start;gap:6px;padding:0;border:0;background:none;text-align:left;color:var(--ink);min-width:0}
+.tile:active{transform:scale(.97)}
+.tile .pic{position:relative;display:grid;place-items:center;aspect-ratio:16/9;border-radius:12px;overflow:hidden;background:var(--surface)}
+.tile .pic>img{width:100%;height:100%;object-fit:cover}
+.tile .pic .ic{width:56px;height:56px;border-radius:14px;font-size:24px}
+.tile .prog{position:absolute;left:0;bottom:0;height:3px;background:var(--accent)}
+.tile b{font-weight:500;font-size:14px;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.tile small{color:var(--muted);font-size:12px}
+.acts{display:flex;gap:6px}.acts .btn{flex:1 1 0;min-width:0;padding:0 8px}
+.chips{display:flex;gap:8px;overflow-x:auto;margin:0 -18px;padding:0 18px 4px;scrollbar-width:none}
+.chips .btn{flex:none;padding:0 14px 0 6px}.chips .ic{width:36px;height:36px;border-radius:10px;font-size:16px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:14px 8px}
+.grid3 .tile{justify-items:center;text-align:center}.grid3 .tile b{font-size:12px;-webkit-line-clamp:2}
+.grid3 .ic{width:56px;height:56px;border-radius:14px;font-size:24px}
+.note{display:flex;align-items:center;gap:4px;color:var(--muted);font-size:13px}
+.note p{margin:0;flex:1}.note button{flex:none;width:48px;height:48px;border:0;background:none;display:grid;place-items:center;color:var(--muted)}
+.empty{color:var(--muted);text-align:center;padding:32px 0}
+#moreApps{justify-self:start}
 
-/* app grid */
-#appsList{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-#appsList button{display:grid;justify-items:center;align-content:start;gap:8px;padding:12px 6px;min-height:96px;font-size:12px}
-#appsList .ic{width:46px;height:46px;border-radius:15px;display:grid;place-items:center;font-size:21px;font-weight:700;color:#fff;border:1px solid var(--line2);
- background:radial-gradient(circle at 35% 25%,rgb(255 255 255/22%),var(--glow) 60%,rgb(0 0 0/25%))}
-#appsList .nm{max-width:100%;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.2}
-#focus{margin:0 0 12px;text-align:center}
+/* Settings: one level of drill-down */
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:60px;padding:0 4px;border:0;border-bottom:1px solid var(--line);background:none;text-align:left;font-size:18px}
+.row:active{transform:none;background:var(--tint)}.row svg{width:20px;height:20px;color:var(--muted);flex:none}
+.shead{display:flex;align-items:center;gap:4px;margin:0 0 6px -10px}
+.shead button{width:48px;height:48px;border:0;background:none;display:grid;place-items:center}
+.shead h2{font-size:24px}
+.page{display:grid;grid-template-columns:minmax(0,1fr);animation:rise .3s ease both}
+.field{display:grid;gap:8px;padding:14px 0;border-bottom:1px solid var(--line);border-width:0 0 1px}
+.field label,.field .l{font-size:15px}
+.field p,.help{margin:0;color:var(--muted);font-size:13px}
+fieldset.field{min-width:0;margin:0;border-style:solid;border-color:var(--line);border-width:0 0 1px}
+.pair{display:flex;gap:8px;flex-wrap:wrap}.pair>*{flex:1 1 120px}
+.sw{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px}
+.sw button{flex:none;width:52px;height:32px;border-radius:16px;border:1px solid var(--line2);background:var(--surface);position:relative;padding:0}
+.sw button:before{content:"";position:absolute;left:3px;top:3px;width:24px;height:24px;border-radius:50%;background:var(--muted);transition:transform .15s ease}
+.sw button[aria-checked=true]{background:var(--accent)}.sw button[aria-checked=true]:before{transform:translateX(20px);background:var(--on-accent)}
+#dbgLog{white-space:pre-wrap;font:11px/1.45 ui-monospace,monospace;max-height:40vh;overflow:auto;margin:8px 0 0;padding:10px;border-radius:10px;background:var(--surface);color:var(--muted)}
 
-/* bottom navigation: floating glass pill */
-.nav{position:fixed;z-index:2;bottom:calc(10px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:min(calc(100% - 24px),456px);height:68px;padding:6px;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;border-radius:26px;
- background:linear-gradient(180deg,var(--glass-a),var(--glass-b)),rgb(3 10 20/70%);border:1px solid var(--line);box-shadow:0 12px 32px rgb(0 0 0/50%),inset 0 1px 0 rgb(255 255 255/14%);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px)}
-.nav button{background:none;border:0;border-radius:20px;color:#a7c3dc;display:grid;justify-items:center;align-content:center;gap:3px;font-size:11px;letter-spacing:.03em;min-width:0}
+/* bottom navigation, docked */
+.nav{position:fixed;z-index:2;bottom:0;left:0;right:0;width:100%;height:calc(52px + env(safe-area-inset-bottom));padding:4px 8px env(safe-area-inset-bottom);display:grid;grid-template-columns:repeat(3,1fr);gap:4px;border-radius:18px 18px 0 0;background:var(--surface);border-top:1px solid var(--line)}
+.nav button{background:none;border:0;border-radius:14px;color:var(--muted);display:grid;justify-items:center;align-content:center;gap:1px;font-size:11px;min-width:0}
 .nav button:active{transform:scale(.94)}
-.nav button.active{color:var(--accent);background:linear-gradient(180deg,var(--glow),transparent 90%);box-shadow:inset 0 0 0 1px var(--line2),0 0 16px var(--glow)}
-.nav svg{width:24px;height:24px}
-
-@media(max-height:760px){.brand{height:56px}.brandmark{height:26px}.media{margin-bottom:14px}.quick{margin-bottom:14px}.dpad-wrap{margin-bottom:12px}.keys{max-width:236px}}
-@media(max-width:380px){.theme-controls{grid-template-columns:1fr}main{padding-left:14px;padding-right:14px}.now-ctl button{font-size:13px}.now-ctl #nowPlay{width:68px;height:68px}}
-@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}.circle:active,.volume button:active,.now-ctl button:active,.apps button:active,.keys button:active,.quick button:active .circle,.nav button:active{transform:none}}
-
-/* tab bar docked at the bottom edge, compact: it must never sit over the D-pad */
-.nav{bottom:0;left:0;right:0;transform:none;width:100%;max-width:none;height:calc(52px + env(safe-area-inset-bottom));padding:4px 8px env(safe-area-inset-bottom);border-radius:18px 18px 0 0;border-bottom:0}
-.nav button{gap:1px;font-size:10px;border-radius:14px}
+.nav button.active{color:var(--accent);background:var(--tint)}
 .nav svg{width:20px;height:20px}
 main{padding-bottom:calc(68px + env(safe-area-inset-bottom))}
+
+@media(max-height:760px){.brand{height:56px}.brandmark{height:26px}.media{margin-bottom:14px}.quick{margin-bottom:14px}.dpad-wrap{margin-bottom:12px}.keys{max-width:236px}}
+@media(max-width:380px){main{padding-left:14px;padding-right:14px}.chips{margin:0 -14px;padding:0 14px 4px}}
 @media (max-height:720px){.keys{max-width:196px}.dpad-wrap{margin-bottom:6px}.brand{height:40px}.brandmark{height:20px}.status{margin-bottom:8px;min-height:24px}.media{margin-bottom:8px}.circle{width:54px;height:54px}.quick{margin-bottom:8px}.motion-toggle{min-height:34px}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
+
+/* Cinema: the buttons of the owner's portfolio. A wireframe cube: gradient top and right edges, the left and bottom faces are
+   pseudo-elements (no layout space); pressed, the cube lifts and its faces fill. Round controls (D-pad, volume, media) only
+   take the gradient ring and the filled face: their size and place are fixed. */
+html.cube{--cube-g:linear-gradient(45deg,var(--cube-a) 0%,var(--cube-b) 100%)}
+html.cube :is(.btn,.motion-toggle,.ctl button:not(#tvToggle),.offline button,.cact button){position:relative;z-index:1;border:2.5px solid var(--cube-a);border-image:var(--cube-g) 1 1 0 0;border-radius:0;background:rgb(255 255 255/3%);color:var(--ink);
+ font-family:'Chakra Petch',var(--font);font-weight:500;text-transform:uppercase;letter-spacing:.5px;transform-origin:left bottom;transition:transform .2s ease-out}
+html.cube .btn:before,html.cube .motion-toggle:before,html.cube .ctl button:not(#tvToggle):before,html.cube .offline button:before,html.cube .cact button:before,html.cube .btn:after,html.cube .motion-toggle:after,html.cube .ctl button:not(#tvToggle):after,html.cube .offline button:after,html.cube .cact button:after{content:"";display:block;position:absolute;z-index:-1;box-sizing:content-box;border:2.2px solid var(--cube-a)}
+html.cube .btn:before,html.cube .motion-toggle:before,html.cube .ctl button:not(#tvToggle):before,html.cube .offline button:before,html.cube .cact button:before{border-image:var(--cube-g) 1 1 0 1;left:-.59em;top:.15em;width:.31em;height:100%;transform:skewY(-45deg)}
+html.cube .btn:after,html.cube .motion-toggle:after,html.cube .ctl button:not(#tvToggle):after,html.cube .offline button:after,html.cube .cact button:after{border-image:var(--cube-g) 1 1 1 0;bottom:-.61em;right:.16em;width:100%;height:.31em;transform:skewX(-45deg)}
+html.cube :is(.btn,.motion-toggle,.ctl button:not(#tvToggle),.offline button,.cact button):is(:active,[aria-pressed=true]){transform:translate(.3em,-.3em)}
+html.cube .btn:active:before,html.cube .motion-toggle:active:before,html.cube .ctl button:not(#tvToggle):active:before,html.cube .offline button:active:before,html.cube .cact button:active:before,html.cube .btn[aria-pressed=true]:before,html.cube .motion-toggle[aria-pressed=true]:before,html.cube .ctl button:not(#tvToggle)[aria-pressed=true]:before,html.cube .offline button[aria-pressed=true]:before,html.cube .cact button[aria-pressed=true]:before{background:var(--cube-g);height:calc(100% - .13em);border-image-slice:1}
+html.cube .btn:active:after,html.cube .motion-toggle:active:after,html.cube .ctl button:not(#tvToggle):active:after,html.cube .offline button:active:after,html.cube .cact button:active:after,html.cube .btn[aria-pressed=true]:after,html.cube .motion-toggle[aria-pressed=true]:after,html.cube .ctl button:not(#tvToggle)[aria-pressed=true]:after,html.cube .offline button[aria-pressed=true]:after,html.cube .cact button[aria-pressed=true]:after{background:var(--cube-g);width:calc(100% - .13em);border-image-slice:1}
+html.cube .btn.main,html.cube .motion-toggle[aria-pressed=true],html.cube .offline button{background:var(--cube-g);color:var(--on-accent)}
+html.cube .pair,html.cube .acts{gap:14px}html.cube .chips{padding-top:8px;padding-bottom:16px}
+html.cube .quick button>span:last-child,html.cube .sw .l{font-family:'Chakra Petch',var(--font);font-weight:500;text-transform:uppercase;letter-spacing:.5px}
+/* round: ring and face only */
+html.cube :is(.circle,.volume button,.ctl #tvToggle){border:2px solid transparent;background:linear-gradient(var(--surface),var(--surface)) padding-box,var(--cube-g) border-box}
+html.cube .media button:nth-child(2){border:2px solid transparent}
+html.cube :is(.circle,.volume button,.ctl #tvToggle):active{background:var(--cube-g);color:var(--on-accent);border-color:transparent}
+html.cube .ctl #tvToggle{color:var(--ink)}
+html.cube .keys{border:2px solid transparent;background:linear-gradient(var(--surface),var(--surface)) padding-box,var(--cube-g) border-box}
+html.cube .keys button:active{background:var(--cube-g);color:var(--on-accent)}
+html.cube .keys [data-c=ok],html.cube .keys [data-c=ok]:active{background:var(--cube-g);color:var(--on-accent)}
+
+/* connect screen (app, no TV open): one idea per screen */
+body.connect main>:not(.brand):not(#connect),body.connect .nav,body.connect .tvbtn{display:none!important}
+#connect{display:grid;gap:16px;align-content:start;padding-top:12px;animation:rise .3s ease both}
+#connect h2{margin:0;font-size:26px;font-weight:600;line-height:1.2;overflow-wrap:anywhere}
+#connect p{margin:0;color:var(--muted)}
+#cErr:empty{display:none}#connect #cErr{color:var(--bad)}
+#cList{display:grid;gap:12px;margin-top:4px}
+#cList button{min-height:76px;padding:0 20px;border-radius:20px;text-align:left;font-size:20px;font-weight:600;color:var(--ink);display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line)}
+#cList button:active{border-color:var(--accent)}
+#cList small{font-size:13px;font-weight:400;color:var(--muted);text-align:right}
+#cList .down{opacity:.7}#cList .down small{color:var(--bad)}
+.pin{display:flex;gap:12px;justify-content:center;margin:12px 0 20px}
+.pin input{width:clamp(52px,17vw,68px);height:clamp(72px,22vw,92px);padding:0;text-align:center;font-size:36px;font-weight:600;border-radius:18px;border:1px solid var(--line2);background:var(--surface);color:var(--ink)}
+.pin input:focus{border-color:var(--accent)}
+.cact{display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:center}
+.cact button{min-height:48px;padding:0 24px;border-radius:999px;border:1px solid var(--line2);background:none;color:var(--ink);font-weight:600}
+#cFoot{margin-top:12px}
 </style>
 <main>
-  <header class="brand"><svg class="brandmark" viewBox="0 0 160 56" aria-hidden="true"><path fill="currentColor" stroke="none" d="M80 2C65 22 48 24 2 20c31 7 47 6 62 8 5 1 10 8 16 24 6-16 11-23 16-24 15-2 31-1 62-8-46 4-63 2-78-18z"/></svg><h1>RAY</h1></header>
-  <p id="getApk" class="status" hidden><a href="/ray.apk" download>Download the Android app</a> · <a href="https://github.com/MadeinTaly/ray-launcher/releases/latest" target="_blank" rel="noopener">GitHub</a></p>
+  <header class="brand"><svg class="brandmark" viewBox="0 0 160 56" aria-hidden="true"><path fill="currentColor" stroke="none" d="M80 2C65 22 48 24 2 20c31 7 47 6 62 8 5 1 10 8 16 24 6-16 11-23 16-24 15-2 31-1 62-8-46 4-63 2-78-18z"/></svg><h1>RAY</h1><button type="button" class="tvbtn" id="tvBtn"><span id="tvName"></span></button></header>
+  <section id="connect" hidden>
+    <h2 id="cTitle"></h2><p id="cSub"></p><p id="cErr" role="alert"></p>
+    <div id="cDown" class="cact" hidden><button type="button" id="cRetry"></button><button type="button" id="cOther"></button></div>
+    <div id="cList"></div>
+    <form id="cPin" hidden><div class="pin"><input inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" aria-label="1"><input inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" aria-label="2"><input inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" aria-label="3"><input inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" aria-label="4"></div><div class="cact"><button type="button" id="cBack"></button></div></form>
+    <div id="cFoot" class="cact"><button type="button" id="cScan"></button><a id="cMgr" href="raylauncher-app://manager"></a></div>
+  </section>
+  <p id="getApk" class="status" hidden><a href="/ray.apk" download>Download the Android app</a> and <a href="https://github.com/MadeinTaly/ray-launcher/releases/latest" target="_blank" rel="noopener">GitHub</a></p>
   <p id="status" class="status" role="status">Connecting…</p>
   <div id="offline" class="offline" hidden><b id="offTitle"></b><span id="offSub"></span><button id="retry" type="button"></button></div>
   <div class="motion-row"><button class="motion-toggle" id="motionMode" aria-pressed="false">Motion · Off</button><button class="motion-toggle" id="recenter" type="button" style="display:none">Recenter</button></div><p class="motion-state" id="motionState" hidden></p>
   <section class="panel active" id="remote">
-    <div class="media"><button class="circle" data-media="MEDIA_REWIND" aria-label="Rewind"><svg viewBox="0 0 32 32"><path d="M15 8 5 16l10 8V8Zm12 0-10 8 10 8V8Z" fill="currentColor" stroke="none"/></svg></button><button class="circle" data-media="MEDIA_PLAY_PAUSE" aria-label="Play or pause"><svg viewBox="0 0 32 32"><path d="M10 8v16M22 8v16" stroke-width="4"/></svg></button><button class="circle" data-media="MEDIA_FAST_FORWARD" aria-label="Fast forward"><svg viewBox="0 0 32 32"><path d="m5 8 10 8-10 8V8Zm12 0 10 8-10 8V8Z" fill="currentColor" stroke="none"/></svg></button></div>
-    <div class="quick"><button data-action="back"><span class="circle"><svg viewBox="0 0 32 32"><path d="M26 16H7m9-9-9 9 9 9"/></svg></span><span>Back</span></button><button data-action="home"><span class="circle"><svg viewBox="0 0 32 32"><path d="m4 15 12-10 12 10v13H6V15m7 13V18h6v10"/></svg></span><span>Home</span></button><button data-action="menu"><span class="circle"><svg viewBox="0 0 32 32"><path d="M5 8h22M5 16h22M5 24h22"/></svg></span><span>Menu</span></button></div>
+    <div class="media"><button class="circle" data-media="MEDIA_REWIND" aria-label="Rewind"><svg viewBox="0 0 32 32"><path d="M15 8 5 16l10 8V8Zm12 0-10 8 10 8V8Z"/></svg></button><button class="circle" data-media="MEDIA_PLAY_PAUSE" aria-label="Play or pause"><svg viewBox="0 0 32 32"><path d="M10 8v16M22 8v16" stroke-width="4"/></svg></button><button class="circle" data-media="MEDIA_FAST_FORWARD" aria-label="Fast forward"><svg viewBox="0 0 32 32"><path d="m5 8 10 8-10 8V8Zm12 0 10 8-10 8V8Z"/></svg></button></div>
+    <div class="quick"><button data-action="back"><span class="circle"><svg viewBox="0 0 32 32"><path d="M26 16H7m9-9-9 9 9 9"/></svg></span><span data-i="Indietro">Back</span></button><button data-action="home"><span class="circle"><svg viewBox="0 0 32 32"><path d="m4 15 12-10 12 10v13H6V15m7 13V18h6v10"/></svg></span><span>Home</span></button><button data-action="menu"><span class="circle"><svg viewBox="0 0 32 32"><path d="M5 8h22M5 16h22M5 24h22"/></svg></span><span>Menu</span></button></div>
     <div class="dpad-wrap"><div class="keys" aria-label="Directional pad"><span></span><button data-c="up" aria-label="Up"><svg viewBox="0 0 32 32"><path d="m8 20 8-8 8 8"/></svg></button><span></span><button data-c="left" aria-label="Left"><svg viewBox="0 0 32 32"><path d="m20 8-8 8 8 8"/></svg></button><button data-c="ok" aria-label="OK">OK</button><button data-c="right" aria-label="Right"><svg viewBox="0 0 32 32"><path d="m12 8 8 8-8 8"/></svg></button><span></span><button data-c="down" aria-label="Down"><svg viewBox="0 0 32 32"><path d="m8 12 8 8 8-8"/></svg></button><span></span></div><div class="volume"><button data-volume="1" aria-label="Volume up">+</button><button data-volume="-1" aria-label="Volume down">−</button><span>Volume<br><b id="volumeValue">—</b></span></div></div>
   </section>
-  <section class="panel" id="apps"><div id="nowApp" class="now" hidden><div class="now-head"><img id="nowArt" alt=""><div><p id="nowAppName" class="device-name"></p><h2 id="nowTitle"></h2><p id="nowSub" class="device-name"></p></div></div><div class="now-bar"><span id="nowPos">0:00</span><input id="nowSeek" type="range" min="0" max="1000" value="0" aria-label="Position"><span id="nowDur">0:00</span></div><div class="now-ctl"><button data-mc="previous" aria-label="Previous"><svg viewBox="0 0 32 32"><path d="M8 7v18M26 7 12 16l14 9V7Z"/></svg></button><button data-mc="back" aria-label="Back 10 s">−10</button><button data-mc="toggle" id="nowPlay" aria-label="Play or pause"><svg class="i-play" viewBox="0 0 32 32"><path d="M10 6v20l17-10z"/></svg><svg class="i-pause" viewBox="0 0 32 32"><path d="M8 6h6v20H8zM18 6h6v20h-6z"/></svg></button><button data-mc="forward" aria-label="Forward 10 s">+10</button><button data-mc="next" aria-label="Next"><svg viewBox="0 0 32 32"><path d="M24 7v18M6 7l14 9L6 25V7Z"/></svg></button></div><form id="nowSearch" class="now-search"><input id="nowQuery" type="search" enterkeyhint="search" aria-label="Search"><button id="nowSearchBtn" aria-label="Search"><svg viewBox="0 0 32 32" style="fill:none;stroke:currentColor;stroke-width:2.6"><circle cx="14" cy="14" r="8"/><path d="m20 20 7 7"/></svg></button></form><p id="nowHint" class="device-name" hidden></p><p id="nowSugTitle" class="device-name"></p><div id="nowSug" class="sug"></div><button class="setting-button" id="showAllApps"></button></div><div id="allApps"><button class="setting-button" id="backToApp" hidden></button><p id="focus" class="focus"></p><div id="appsList" class="apps"></div></div></section>
-  <section class="panel" id="settings"><div class="settings"><button class="setting-button" id="motionSettings">Motion aiming</button><button class="setting-button" id="chooseDevice">Choose device</button><p id="deviceName" class="device-name">Device controls</p><div class="apps"><button data-scene="cinema">Cinema</button><button data-scene="night">Night</button><button data-scene="reset">Reset</button></div><div class="control"><label for="light"><span id="lightLabel">Screen light</span><span id="lightValue">100%</span></label><input id="light" type="range" min="5" max="100" value="100"></div><div class="control"><p id="vpnStatus" role="status">VPN</p><label for="vpnApp"><span id="vpnAppL">App VPN</span><select id="vpnApp"></select></label><button class="setting-button" id="vpnOpen" disabled>Apri</button><button class="setting-button" id="vpnSettings">Impostazioni VPN</button></div><fieldset class="control" id="themeSettings" disabled style="border:0;padding:0;min-width:0"><legend id="themeLabel" class="device-name">Launcher theme</legend><div class="theme-controls"><label for="dayNight"><span id="dayNightL">Giorno/notte</span><select id="dayNight"><option value="auto">Automatico</option><option value="day">Giorno</option><option value="night">Notte</option></select></label><label for="themeSkin"><span>Skin</span><select id="themeSkin"></select></label><label for="remoteSkin"><span id="remoteSkinLabel">Remote</span><select id="remoteSkin"></select></label><label for="themeColor"><span id="themeColorLabel">Color</span><input id="themeColor" type="color" value="#24dcff"></label><div class="apps" aria-label="Colori tema"><button data-theme-color="#24dcff">Ciano</button><button data-theme-color="#9864ff">Viola</button><button data-theme-color="#ffbf59">Ambra</button><button data-theme-color="#30d890">Smeraldo</button></div><label for="themeStyle"><span id="themeStyleLabel">Style</span><select id="themeStyle"><option value="glass">Liquid glass</option><option value="metal">Liquid metal</option><option value="glow">Glow</option><option value="plain">Solo sfondo</option><option value="flood">Flood</option><option value="horror">Horror</option></select></label></div><button class="setting-button" id="skinInstall">Install skin (.zip)</button><input id="skinFile" type="file" accept=".zip,application/zip" hidden><div class="theme-controls" style="margin-top:12px"><button class="setting-button" id="wpUpload">TV wallpaper</button><button class="setting-button" id="wpReset">Reset</button></div><input id="wpFile" type="file" accept="image/*" hidden><p id="wpMsg" class="device-name" role="status"></p></fieldset><fieldset class="control" id="weatherSettings" style="border:0;padding:0;min-width:0"><legend id="wxLabel" class="device-name">Meteo</legend><button class="setting-button" id="wxEnable">Attiva il meteo</button><div id="wxConsent" hidden><p id="wxConsentT" class="device-name"></p><div class="theme-controls"><button class="setting-button" id="wxYes">Accetta</button><button class="setting-button" id="wxNo">Annulla</button></div></div><div id="wxForm" hidden><div class="theme-controls"><label for="wxCity" style="grid-column:1/-1"><span id="wxCityL">Città</span><input id="wxCity" type="text" maxlength="80" autocomplete="off"></label><label for="wxProv" style="grid-column:1/-1"><span id="wxProvL">Provider</span><select id="wxProv"><option value="openmeteo">Open-Meteo (senza chiave)</option><option value="openweathermap">OpenWeatherMap</option></select></label><label for="wxKey" id="wxKeyW" style="grid-column:1/-1" hidden><span id="wxKeyL">Chiave API</span><input id="wxKey" type="password" maxlength="64" autocomplete="off"></label></div><button class="setting-button" id="wxSave" style="margin-top:12px">Salva</button><p id="wxMsg" class="device-name" role="status"></p><button class="setting-button" id="wxOff" style="margin-top:12px">Disattiva il meteo</button></div></fieldset><a id="deviceLink">Open RAY controls</a></div></section>
-  <section class="panel" id="device"><div class="settings"><p id="deviceNameAlt" class="device-name">No device selected</p><button id="deviceSelect" class="setting-button">Choose device</button><a id="deviceLinkAlt">Open RAY controls</a><fieldset class="control" id="dbg" style="border:0;padding:0;min-width:0"><legend id="dbgL" class="device-name">Debug</legend><div class="theme-controls"><button class="setting-button" id="dbgPanel">TV panel</button><button class="setting-button" id="dbgCopy">Copy state</button></div><p id="dbgInfo" class="device-name" role="status"></p><pre id="dbgLog" style="white-space:pre-wrap;font:11px/1.45 ui-monospace,monospace;max-height:40vh;overflow:auto;margin:8px 0 0;padding:10px;border-radius:10px;background:rgb(0 0 0/35%);color:var(--muted)"></pre></fieldset><a href="https://linktr.ee/made_in_Taly" target="_blank" rel="noopener">Support RAY · Sostieni RAY</a></div></section>
+
+  <section class="panel" id="tv">
+    <div class="stack">
+      <div class="note" id="tvNote" hidden><p data-i="Per vedere cosa è in riproduzione: attiva sulla TV, Impostazioni, Telefono">See what is playing: enable on TV, Settings, Phone</p><button type="button" id="tvNoteX" aria-label="Don't show again" data-a="aria-label" data-i="Non mostrare più"><svg viewBox="0 0 24 24" width="20" height="20"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+
+      <div id="tvApp" class="stack" hidden>
+        <div id="tvPlay" class="stack" hidden>
+          <div class="now"><img class="thumb" id="tvArt" alt=""><div><h2 id="tvTitle"></h2><p id="tvSub"></p></div></div>
+          <div>
+            <div class="bar"><span id="tvPos">0:00</span><input id="tvSeek" type="range" min="0" max="1000" value="0" aria-label="Position" data-a="aria-label" data-i="Posizione"><span id="tvDur">0:00</span></div>
+            <div class="ctl"><button type="button" data-mc="stop" aria-label="Stop" data-a="aria-label" data-i="Stop"><svg viewBox="0 0 32 32"><rect x="8" y="8" width="16" height="16" rx="2"/></svg></button><button type="button" data-mc="back" aria-label="Back 10 s">−10</button><button type="button" data-mc="toggle" id="tvToggle" aria-label="Play or pause" data-a="aria-label" data-i="Riproduci o pausa"><svg class="i-play" viewBox="0 0 32 32"><path d="M11 6v20l16-10z"/></svg><svg class="i-pause" viewBox="0 0 32 32"><path d="M11 7v18M21 7v18" stroke-width="3"/></svg></button><button type="button" data-mc="forward" aria-label="Forward 10 s">+10</button></div>
+            <div class="ctl ctl2"><button type="button" data-mc="previous" aria-label="Previous" data-a="aria-label" data-i="Precedente"><svg viewBox="0 0 32 32"><path d="M8 7v18M26 7 12 16l14 9V7Z"/></svg></button><button type="button" data-mc="next" aria-label="Next" data-a="aria-label" data-i="Successivo"><svg viewBox="0 0 32 32"><path d="M24 7v18M6 7l14 9L6 25V7Z"/></svg></button></div>
+          </div>
+        </div>
+        <div id="tvAppHero" class="hero big" hidden><span class="ic" id="tvAppIc"></span><h2 id="tvAppName"></h2></div>
+        <form id="tvSearch" class="search" hidden><input id="tvQuery" class="txt" type="search" enterkeyhint="search"><button class="btn" type="submit" aria-label="Search" data-a="aria-label" data-i="Cerca"><svg viewBox="0 0 32 32"><circle cx="14" cy="14" r="8"/><path d="m20 20 7 7"/></svg></button></form>
+        <div id="tvCont" hidden><h3 data-i="Continua a guardare">Continue watching</h3><div id="tvContL" class="tiles"></div></div>
+        <div id="tvSugg" hidden><h3 data-i="Suggeriti">Suggested</h3><div id="tvSuggL" class="tiles"></div></div>
+        <div id="tvShort" class="stack" hidden>
+          <div class="acts"><button type="button" class="btn" data-action="back"><svg viewBox="0 0 32 32"><path d="M26 16H7m9-9-9 9 9 9"/></svg><span data-i="Indietro">Back</span></button><button type="button" class="btn" data-action="home"><svg viewBox="0 0 32 32"><path d="m4 15 12-10 12 10v13H6V15m7 13V18h6v10"/></svg><span>Home</span></button><button type="button" class="btn" id="tvKbd"><svg viewBox="0 0 32 32"><rect x="3" y="8" width="26" height="16" rx="3"/><path d="M8 14h1m4 0h1m4 0h1m4 0h1M10 19h12"/></svg><span data-i="Tastiera">Keyboard</span></button></div>
+          <div id="tvRecentW"><h3 data-i="App recenti">Recent apps</h3><div id="tvRecent" class="chips"></div></div>
+        </div>
+      </div>
+
+      <div id="tvHome" class="stack" hidden>
+        <div id="tvFeedW"><h3 data-i="Continua a guardare">Continue watching</h3><div id="tvFeed" class="tiles"></div></div>
+        <div id="tvAppsW"><h3 data-i="App">Apps</h3><div id="tvApps" class="tiles"></div></div>
+        <button type="button" class="btn" id="moreApps" aria-expanded="false" aria-controls="allGrid" data-i="Tutte le app">All apps</button>
+        <div id="allGrid" class="grid3" hidden></div>
+      </div>
+      <p class="empty" id="tvEmpty" data-i="In attesa della TV…">Waiting for the TV…</p>
+    </div>
+  </section>
+
+  <section class="panel" id="settings">
+    <div id="sList">
+      <button type="button" class="row" data-open="screen"><span data-i="Schermo">Screen</span><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+      <button type="button" class="row" data-open="sound"><span data-i="Audio">Sound</span><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+      <button type="button" class="row" data-open="look"><span data-i="Aspetto">Look</span><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+      <button type="button" class="row" data-open="motion"><span data-i="Movimento">Motion</span><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+      <button type="button" class="row" data-open="weather"><span data-i="Meteo">Weather</span><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+      <button type="button" class="row" data-open="network"><span data-i="Rete">Network</span><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+      <button type="button" class="row" data-open="about"><span data-i="Informazioni">About</span><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+    </div>
+    <div class="shead" id="sHead" hidden><button type="button" id="sBack" aria-label="Back" data-a="aria-label" data-i="Indietro"><svg viewBox="0 0 24 24" width="24" height="24"><path d="m15 6-6 6 6 6"/></svg></button><h2 id="sTitle"></h2></div>
+
+    <div class="page" data-page="screen" hidden>
+      <div class="field"><span class="l" data-i="Scena">Scene</span><div class="pair"><button type="button" class="btn" data-scene="cinema" data-i="Cinema">Cinema</button><button type="button" class="btn" data-scene="night" data-i="Notte">Night</button><button type="button" class="btn" data-scene="reset" data-i="Ripristina">Reset</button></div></div>
+      <div class="field"><label for="light"><span id="lightLabel" data-i="Luce schermo">Screen light</span> <span id="lightValue">100%</span></label><input id="light" type="range" min="5" max="100" value="100"></div>
+      <div class="field"><span class="l" data-i="Filtro e programmazione">Filter and schedule</span><a class="btn" id="deviceLink" data-i="Apri i controlli di RAY">Open RAY controls</a></div>
+    </div>
+
+    <div class="page" data-page="sound" hidden>
+      <div class="field"><div class="sw"><span class="l" id="musicL" data-i="Suoni ambiente">Ambient sound</span><button type="button" role="switch" id="music" aria-checked="false" aria-labelledby="musicL"></button></div></div>
+    </div>
+
+    <div class="page" data-page="look" hidden>
+      <fieldset class="field" id="lookSet" disabled>
+        <label for="dayNight" data-i="Giorno/notte">Day/night</label><select id="dayNight" class="sel"><option value="auto">Automatic</option><option value="day">Day</option><option value="night">Night</option></select>
+        <label for="themeSkin" data-i="Tema">Theme</label><select id="themeSkin" class="sel"></select>
+        <label for="remoteSkin" data-i="Telecomando">Remote</label><select id="remoteSkin" class="sel"></select>
+        <span class="l" data-i="Sfondo TV">TV wallpaper</span><div class="pair"><button type="button" class="btn" id="wpUpload"></button><button type="button" class="btn" id="wpReset"></button></div><input id="wpFile" type="file" accept="image/*" hidden><p id="wpMsg" role="status"></p>
+        <button type="button" class="btn" id="skinInstall"></button><input id="skinFile" type="file" accept=".zip,application/zip" hidden>
+      </fieldset>
+    </div>
+
+    <div class="page" data-page="motion" hidden>
+      <div class="field"><button type="button" class="btn" id="motionSettings" data-i="Sensibilità">Sensitivity</button><p id="motionHelp" data-i="Con Movimento attivo, Volume giù seleziona e Volume su ricentra.">With Motion on, volume down selects and volume up recenters.</p><p id="motionApp" hidden></p></div>
+    </div>
+
+    <div class="page" data-page="weather" hidden>
+      <fieldset class="field" id="weatherSettings">
+        <button type="button" class="btn main" id="wxEnable"></button>
+        <div id="wxConsent" hidden><p id="wxConsentT"></p><div class="pair"><button type="button" class="btn main" id="wxYes"></button><button type="button" class="btn" id="wxNo"></button></div></div>
+        <div id="wxForm" hidden>
+          <label for="wxCity" id="wxCityL"></label><input id="wxCity" class="txt" type="text" maxlength="80" autocomplete="off">
+          <label for="wxProv" id="wxProvL" data-i="Provider">Provider</label><select id="wxProv" class="sel"><option value="openmeteo"></option><option value="openweathermap">OpenWeatherMap</option></select>
+          <label for="wxKey" id="wxKeyL" hidden></label><input id="wxKey" class="txt" type="password" maxlength="64" autocomplete="off" hidden>
+          <div class="pair"><button type="button" class="btn main" id="wxSave"></button><button type="button" class="btn" id="wxOff"></button></div><p id="wxMsg" role="status"></p>
+        </div>
+      </fieldset>
+    </div>
+
+    <div class="page" data-page="network" hidden>
+      <div class="field"><p id="vpnStatus" role="status">VPN</p>
+        <label for="vpnApp" id="vpnAppL"></label><select id="vpnApp" class="sel"></select>
+        <div class="pair"><button type="button" class="btn main" id="vpnOpen" disabled></button><button type="button" class="btn" id="vpnSettings"></button></div></div>
+    </div>
+
+    <div class="page" data-page="about" hidden>
+      <div class="field"><span class="l">RAY <span id="ver"></span></span><a href="https://linktr.ee/made_in_Taly" target="_blank" rel="noopener" data-i="Sostieni RAY">Support RAY</a></div>
+      <div class="field"><a id="deviceLinkAlt" data-i="Apri i controlli di RAY">Open RAY controls</a></div>
+      <fieldset class="field" id="dbg" hidden><legend id="dbgL">Debug</legend><div class="pair"><button type="button" class="btn" id="dbgPanel">TV panel</button><button type="button" class="btn" id="dbgCopy">Copy state</button></div><p id="dbgInfo" role="status"></p><pre id="dbgLog"></pre></fieldset>
+    </div>
+  </section>
 </main>
-<nav class="nav" aria-label="Main navigation"><button class="active" data-tab="remote"><svg viewBox="0 0 32 32"><rect x="4" y="4" width="24" height="19" rx="2"/><path d="M12 28h8m-4-5v5"/></svg><span>Remote</span></button><button data-tab="apps"><svg viewBox="0 0 32 32"><rect x="4" y="4" width="9" height="9" rx="2"/><rect x="19" y="4" width="9" height="9" rx="2"/><rect x="4" y="19" width="9" height="9" rx="2"/><rect x="19" y="19" width="9" height="9" rx="2"/></svg><span>Apps</span></button><button data-tab="settings"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="5"/><path d="M16 3v4m0 18v4M3 16h4m18 0h4M7 7l3 3m12 12 3 3m0-18-3 3m-12 12-3 3"/></svg><span>Settings</span></button><button data-tab="device"><svg viewBox="0 0 32 32"><circle cx="16" cy="10" r="6"/><path d="M4 28c1-7 5-10 12-10s11 3 12 10z"/></svg><span>Device</span></button></nav>
+<nav class="nav" aria-label="Main navigation"><button class="active" data-tab="remote"><svg viewBox="0 0 32 32"><rect x="9" y="3" width="14" height="26" rx="4"/><circle cx="16" cy="10" r="2"/><path d="M13 18h6m-6 5h6"/></svg><span data-i="Telecomando">Remote</span></button><button data-tab="tv"><svg viewBox="0 0 32 32"><rect x="4" y="4" width="24" height="19" rx="2"/><path d="M12 28h8m-4-5v5"/></svg><span data-i="Sul TV">On TV</span></button><button data-tab="settings"><svg viewBox="0 0 32 32"><path d="M4 9h13m6 0h5M4 16h5m6 0h13M4 23h15m6 0h3"/><circle cx="20" cy="9" r="3"/><circle cx="12" cy="16" r="3"/><circle cx="22" cy="23" r="3"/></svg><span data-i="Impostazioni">Settings</span></button></nav>
 <script>
-const IT=navigator.language.toLowerCase().startsWith('it'),PAL=['liquid','metal','lanterna','astrolabio'];let skinList=[],skinSig='';
-function skinName(s){return s.name&&(IT?s.name.it:s.name.en)||s.id}
+const I18N={
+ "de":{" is not reachable":" ist nicht erreichbar"," needs a new code":" braucht einen neuen Code",", no VPN app installed":", keine VPN-App installiert","About":"Info","All apps":"Alle Apps","Ambient sound":"Umgebungsklang","Apps":"Apps","Authenticating…":"Authentifizierung…","Automatic":"Automatisch","Back":"Zurück","Back online · tap to open":"Wieder online · zum Öffnen tippen","Change TV: ":"Fernseher wechseln: ","Check that it is on and on the same Wi-Fi. This page keeps looking.":"Prüfe, ob er eingeschaltet und im selben WLAN ist. Diese Seite sucht weiter.","Choose image…":"Bild wählen…","Cinema":"Kino","Command failed":"Befehl fehlgeschlagen","Connect your TV":"Verbinde deinen Fernseher","Connected":"Verbunden","Connecting…":"Verbinden…","Continue watching":"Weiterschauen","Copied":"Kopiert","Copy state":"Status kopieren","Day":"Tag","Day/night":"Tag/Nacht","Default wallpaper restored":"Standardhintergrund wiederhergestellt","Disconnected · reconnecting":"Getrennt · Neuverbindung","Don't show again":"Nicht mehr anzeigen","Enter the code shown on the TV.":"Gib den Code ein, der am Fernseher steht.","Error: ":"Fehler: ","Filter and schedule":"Filter und Zeitplan","Image too large (max 15 MB)":"Bild zu groß (max. 15 MB)","Install skin (.zip)":"Skin installieren (.zip)","Installed: ":"Installiert: ","Keyboard":"Tastatur","Local filter":"Lokaler Filter","Look":"Aussehen","Looking for TVs with RAY…":"Suche nach Fernsehern mit RAY…","Make sure the phone and the TV are on the same Wi-Fi network.":"Prüfe, ob Telefon und Fernseher im selben Wi-Fi-Netzwerk sind.","Missing pairing key (#k=…)":"Kopplungsschlüssel fehlt (#k=…)","Motion":"Bewegung","Motion aiming requires the RAY app.":"Zielen per Bewegung braucht die RAY-App.","Motion paused.":"Bewegung pausiert.","Motion sensor unavailable.":"Bewegungssensor nicht verfügbar.","Motion · ":"Bewegung · ","Move your phone to point. Tap OK to select.":"Bewege dein Telefon zum Zielen. Tippe auf OK zum Auswählen.","Needs a new code":"Neuer Code nötig","Network":"Netzwerk","Network error":"Netzwerkfehler","Next":"Weiter","Night":"Nacht","No apps yet":"Noch keine Apps","Not reachable":"Nicht erreichbar","Off":"Aus","On":"An","On TV":"Am Fernseher","Open RAY controls":"RAY-Steuerung öffnen","Open RAY on the TV, on the same Wi-Fi. It shows up here.":"Öffne RAY auf dem Fernseher im selben WLAN. Er erscheint hier.","Open VPN app":"VPN-App öffnen","Open-Meteo (no key)":"Open-Meteo (ohne Schlüssel)","Other TV":"Anderer Fernseher","Pairing key rejected":"Kopplungsschlüssel abgelehnt","Play or pause":"Wiedergabe oder Pause","Position":"Position","Previous":"Zurück","Recent apps":"Zuletzt genutzte Apps","Recenter":"Neu zentrieren","Remote":"Fernbedienung","Reset":"Zurücksetzen","Restore":"Zurücksetzen","Retry":"Erneut versuchen","Same as TV":"Wie der Fernseher","Saved":"Gespeichert","Scan QR":"QR-Code scannen","Scene":"Szene","Screen":"Bildschirm","Screen light":"Bildschirmlicht","Search":"Suchen","Search in ":"Suchen in ","See what is playing: enable on TV, Settings, Phone":"Sieh, was läuft: am Fernseher unter Einstellungen, Telefon aktivieren","Sensitivity":"Empfindlichkeit","Settings":"Einstellungen","Sound":"Ton","Stop":"Stopp","Suggested":"Vorschläge","Support RAY":"RAY unterstützen","TV is not using VPN":"Der Fernseher nutzt kein VPN","TV not found":"Fernseher nicht gefunden","TV panel: ":"Panel am Fernseher: ","TV uses VPN":"Der Fernseher nutzt VPN","TV wallpaper":"Fernseher-Hintergrund","Tap it and enter the code shown on the TV.":"Tippe darauf und gib den Code vom Fernseher ein.","The TV cannot show the code. Scan the QR on the TV instead.":"Der Fernseher kann den Code nicht anzeigen. Scanne stattdessen den QR-Code am Fernseher.","The code expired. Choose the TV again.":"Der Code ist abgelaufen. Wähle den Fernseher erneut.","Theme":"Design","To control other apps, turn on RAY in Settings > Accessibility on the TV":"Um andere Apps zu steuern, aktiviere RAY unter Einstellungen > Bedienungshilfen auf dem Fernseher","Too many tries. Choose the TV again.":"Zu viele Versuche. Wähle den Fernseher erneut.","Unknown city or invalid key":"Unbekannte Stadt oder ungültiger Schlüssel","VPN app":"VPN-App","VPN settings":"VPN-Einstellungen","VPN status unavailable":"VPN-Status nicht verfügbar","Wait a few seconds and try again.":"Warte einige Sekunden und versuche es erneut.","Waiting for the TV…":"Warte auf den Fernseher…","Wallpaper updated":"Hintergrund aktualisiert","Weather":"Wetter","With Motion on, volume down selects and volume up recenters.":"Bei aktiver Bewegung wählt Leiser aus und Lauter zentriert neu.","Wrong code. Try again.":"Falscher Code. Versuche es erneut.","last key ":"letzte Taste ","min left":"Min. übrig","off":"nein","on":"ja"},
+ "fr":{" is not reachable":" est injoignable"," needs a new code":" a besoin d'un nouveau code",", no VPN app installed":", aucune app VPN installée","About":"À propos","All apps":"Toutes les apps","Ambient sound":"Sons d'ambiance","Apps":"Apps","Authenticating…":"Authentification…","Automatic":"Automatique","Back":"Retour","Back online · tap to open":"De nouveau en ligne · touche pour ouvrir","Change TV: ":"Changer de TV : ","Check that it is on and on the same Wi-Fi. This page keeps looking.":"Vérifie qu'elle est allumée et sur le même Wi-Fi. Cette page continue de chercher.","Choose image…":"Choisir une image…","Cinema":"Cinéma","Command failed":"Échec de la commande","Connect your TV":"Connecte ta TV","Connected":"Connecté","Connecting…":"Connexion…","Continue watching":"Reprendre la lecture","Copied":"Copié","Copy state":"Copier l'état","Day":"Jour","Day/night":"Jour/nuit","Default wallpaper restored":"Fond d'écran par défaut rétabli","Disconnected · reconnecting":"Déconnecté · reconnexion","Don't show again":"Ne plus afficher","Enter the code shown on the TV.":"Saisis le code affiché sur la TV.","Error: ":"Erreur : ","Filter and schedule":"Filtre et programmation","Image too large (max 15 MB)":"Image trop grande (max 15 Mo)","Install skin (.zip)":"Installer un skin (.zip)","Installed: ":"Installé : ","Keyboard":"Clavier","Local filter":"Filtre local","Look":"Apparence","Looking for TVs with RAY…":"Recherche de TV avec RAY…","Make sure the phone and the TV are on the same Wi-Fi network.":"Vérifie que le téléphone et la TV sont sur le même réseau Wi-Fi.","Missing pairing key (#k=…)":"Clé d'association manquante (#k=…)","Motion":"Mouvement","Motion aiming requires the RAY app.":"La visée par mouvement nécessite l'app RAY.","Motion paused.":"Mouvement en pause.","Motion sensor unavailable.":"Capteur de mouvement indisponible.","Motion · ":"Mouvement · ","Move your phone to point. Tap OK to select.":"Bouge ton téléphone pour viser. Touche OK pour sélectionner.","Needs a new code":"Nouveau code requis","Network":"Réseau","Network error":"Erreur réseau","Next":"Suivant","Night":"Nuit","No apps yet":"Aucune app pour l'instant","Not reachable":"Injoignable","Off":"Désactivé","On":"Activé","On TV":"Sur la TV","Open RAY controls":"Ouvrir les contrôles de RAY","Open RAY on the TV, on the same Wi-Fi. It shows up here.":"Ouvre RAY sur la TV, sur le même Wi-Fi. Elle apparaîtra ici.","Open VPN app":"Ouvrir l'app VPN","Open-Meteo (no key)":"Open-Meteo (sans clé)","Other TV":"Autre TV","Pairing key rejected":"Clé d'association refusée","Play or pause":"Lecture ou pause","Position":"Position","Previous":"Précédent","Recent apps":"Apps récentes","Recenter":"Recentrer","Remote":"Télécommande","Reset":"Réinitialiser","Restore":"Rétablir","Retry":"Réessayer","Same as TV":"Comme la TV","Saved":"Enregistré","Scan QR":"Scanner le QR","Scene":"Ambiance","Screen":"Écran","Screen light":"Lumière d'écran","Search":"Rechercher","Search in ":"Rechercher dans ","See what is playing: enable on TV, Settings, Phone":"Voir ce qui est lu : activer sur la TV, Paramètres, Téléphone","Sensitivity":"Sensibilité","Settings":"Paramètres","Sound":"Son","Stop":"Arrêter","Suggested":"Suggestions","Support RAY":"Soutenir RAY","TV is not using VPN":"La TV n'utilise pas le VPN","TV not found":"TV introuvable","TV panel: ":"Panneau de la TV: ","TV uses VPN":"La TV utilise le VPN","TV wallpaper":"Fond d'écran de la TV","Tap it and enter the code shown on the TV.":"Touche-la et saisis le code affiché sur la TV.","The TV cannot show the code. Scan the QR on the TV instead.":"La TV ne peut pas afficher le code. Scanne plutôt le QR de la TV.","The code expired. Choose the TV again.":"Le code a expiré. Choisis à nouveau la TV.","Theme":"Thème","To control other apps, turn on RAY in Settings > Accessibility on the TV":"Pour contrôler les autres apps, active RAY dans Paramètres > Accessibilité sur la TV","Too many tries. Choose the TV again.":"Trop d'essais. Choisis à nouveau la TV.","Unknown city or invalid key":"Ville inconnue ou clé invalide","VPN app":"App VPN","VPN settings":"Paramètres VPN","VPN status unavailable":"État du VPN indisponible","Wait a few seconds and try again.":"Attends quelques secondes et réessaie.","Waiting for the TV…":"En attente de la TV…","Wallpaper updated":"Fond d'écran mis à jour","Weather":"Météo","With Motion on, volume down selects and volume up recenters.":"Avec Mouvement activé, volume bas sélectionne et volume haut recentre.","Wrong code. Try again.":"Code incorrect. Réessaie.","last key ":"dernière touche ","min left":"min restantes","off":"non","on":"oui"},
+ "es":{" is not reachable":" no está accesible"," needs a new code":" necesita un código nuevo",", no VPN app installed":", ninguna app VPN instalada","About":"Acerca de","All apps":"Todas las apps","Ambient sound":"Sonido ambiente","Apps":"Apps","Authenticating…":"Autenticando…","Automatic":"Automático","Back":"Atrás","Back online · tap to open":"De nuevo en línea · toca para abrir","Change TV: ":"Cambiar de TV: ","Check that it is on and on the same Wi-Fi. This page keeps looking.":"Comprueba que esté encendida y en la misma red Wi-Fi. Esta página sigue buscando.","Choose image…":"Elegir imagen…","Cinema":"Cine","Command failed":"Comando fallido","Connect your TV":"Conecta tu TV","Connected":"Conectado","Connecting…":"Conectando…","Continue watching":"Continuar viendo","Copied":"Copiado","Copy state":"Copiar estado","Day":"Día","Day/night":"Día/noche","Default wallpaper restored":"Fondo predeterminado restaurado","Disconnected · reconnecting":"Desconectado · reconectando","Don't show again":"No volver a mostrar","Enter the code shown on the TV.":"Escribe el código que muestra la TV.","Error: ":"Error: ","Filter and schedule":"Filtro y programación","Image too large (max 15 MB)":"Imagen demasiado grande (máx. 15 MB)","Install skin (.zip)":"Instalar skin (.zip)","Installed: ":"Instalado: ","Keyboard":"Teclado","Local filter":"Filtro local","Look":"Aspecto","Looking for TVs with RAY…":"Buscando TVs con RAY…","Make sure the phone and the TV are on the same Wi-Fi network.":"Comprueba que el teléfono y la TV estén en la misma red Wi-Fi.","Missing pairing key (#k=…)":"Falta la clave de vinculación (#k=…)","Motion":"Movimiento","Motion aiming requires the RAY app.":"La puntería por movimiento necesita la app RAY.","Motion paused.":"Movimiento en pausa.","Motion sensor unavailable.":"Sensor de movimiento no disponible.","Motion · ":"Movimiento · ","Move your phone to point. Tap OK to select.":"Mueve el teléfono para apuntar. Toca OK para seleccionar.","Needs a new code":"Necesita un código nuevo","Network":"Red","Network error":"Error de red","Next":"Siguiente","Night":"Noche","No apps yet":"Aún no hay apps","Not reachable":"No accesible","Off":"Desactivado","On":"Activado","On TV":"En la TV","Open RAY controls":"Abrir controles de RAY","Open RAY on the TV, on the same Wi-Fi. It shows up here.":"Abre RAY en la TV, en la misma red Wi-Fi. Aparecerá aquí.","Open VPN app":"Abrir app VPN","Open-Meteo (no key)":"Open-Meteo (sin clave)","Other TV":"Otra TV","Pairing key rejected":"Clave de vinculación rechazada","Play or pause":"Reproducir o pausar","Position":"Posición","Previous":"Anterior","Recent apps":"Apps recientes","Recenter":"Recentrar","Remote":"Mando","Reset":"Restablecer","Restore":"Restaurar","Retry":"Reintentar","Same as TV":"Como la TV","Saved":"Guardado","Scan QR":"Escanear QR","Scene":"Escena","Screen":"Pantalla","Screen light":"Luz de pantalla","Search":"Buscar","Search in ":"Buscar en ","See what is playing: enable on TV, Settings, Phone":"Ver qué se reproduce: activar en la TV, Ajustes, Teléfono","Sensitivity":"Sensibilidad","Settings":"Ajustes","Sound":"Sonido","Stop":"Detener","Suggested":"Sugerencias","Support RAY":"Apoyar RAY","TV is not using VPN":"La TV no usa la VPN","TV not found":"TV no encontrada","TV panel: ":"Panel de la TV: ","TV uses VPN":"La TV usa la VPN","TV wallpaper":"Fondo de la TV","Tap it and enter the code shown on the TV.":"Tócala y escribe el código que muestra la TV.","The TV cannot show the code. Scan the QR on the TV instead.":"La TV no puede mostrar el código. Escanea el QR de la TV.","The code expired. Choose the TV again.":"El código ha caducado. Elige la TV de nuevo.","Theme":"Tema","To control other apps, turn on RAY in Settings > Accessibility on the TV":"Para controlar otras apps, activa RAY en Ajustes > Accesibilidad de la TV","Too many tries. Choose the TV again.":"Demasiados intentos. Elige la TV de nuevo.","Unknown city or invalid key":"Ciudad desconocida o clave no válida","VPN app":"App VPN","VPN settings":"Ajustes de VPN","VPN status unavailable":"Estado de VPN no disponible","Wait a few seconds and try again.":"Espera unos segundos e inténtalo de nuevo.","Waiting for the TV…":"Esperando a la TV…","Wallpaper updated":"Fondo actualizado","Weather":"Tiempo","With Motion on, volume down selects and volume up recenters.":"Con Movimiento activado, bajar volumen selecciona y subir volumen recentra.","Wrong code. Try again.":"Código incorrecto. Inténtalo de nuevo.","last key ":"última tecla ","min left":"min restantes","off":"no","on":"sí"}};
+const IT=navigator.language.toLowerCase().startsWith('it'),uiLang=(navigator.language||'en').slice(0,2).toLowerCase();
+const tr=(en,i)=>IT&&i!==undefined?i:((I18N[uiLang]||{})[en]||en);
+const $=x=>document.querySelector(x),$$=x=>[...document.querySelectorAll(x)];
+function el(tag,cls,txt){const e=document.createElement(tag);if(cls)e.className=cls;if(txt!==undefined)e.textContent=txt;return e}
+/* static text: the English in the markup, data-i is the Italian; data-a names the attribute to translate instead of the text */
+$$('[data-i]').forEach(e=>{const a=e.dataset.a;if(a)e.setAttribute(a,tr(e.getAttribute(a),e.dataset.i));else e.textContent=tr(e.textContent,e.dataset.i)});
+document.documentElement.lang=tr('en','it');
+let skinList=[],skinSig='';
+const skinName=s=>s.name&&(IT?s.name.it:s.name.en)||s.id;
 /* skin menus come from the TV (theme.skins): built in and installed ones */
-function fillSkins(t){const l=t&&t.skins||[],sig=JSON.stringify(l);if(sig===skinSig)return;skinSig=sig;skinList=l;const opt=(v,x)=>{const o=document.createElement('option');o.value=v;o.textContent=x;return o};document.querySelector('#themeSkin').replaceChildren(...l.map(k=>opt(k.id,skinName(k))));document.querySelector('#remoteSkin').replaceChildren(opt('match',IT?'Come la TV':'Same as TV'),...l.map(k=>opt(k.id,skinName(k))))}
-/* ids with a palette in the CSS keep it; any other skin colours the page from its accent */
-function setPalette(k){const st=document.documentElement.style;for(const p of ['--accent','--accent2','--line2','--glow'])st.removeProperty(p);if(k&&k.accent&&!PAL.includes(k.id)){st.setProperty('--accent',k.accent);st.setProperty('--accent2',k.accent);st.setProperty('--line2','color-mix(in srgb,'+k.accent+' 55%,transparent)');st.setProperty('--glow','color-mix(in srgb,'+k.accent+' 40%,transparent)')}}
-function remoteSkinOf(t){const r=t&&t.remoteSkin&&t.remoteSkin!=='match'?t.remoteSkin:(t&&t.skin)||'essenziale',k=skinList.find(x=>x.id===r);setPalette(k);setArt(k&&k.hasRemote?r:'',t&&t.isDay===false?'night':'day');return r}
-let artSkin='';function setArt(k,m){const key=k&&k+'|'+m;if(key===artSkin)return;artSkin=key;const root=document.documentElement;if(!k){delete root.dataset.art;return}const im=new Image(),u='/skins/'+k+'/remote.webp?m='+m;im.onload=()=>{if(artSkin!==key)return;root.style.setProperty('--art','url('+u+')');root.dataset.art=''};im.onerror=()=>{if(artSkin===key)delete root.dataset.art};im.src=u}
-(()=>{const status=document.querySelector('#status'),focus=document.querySelector('#focus'),list=document.querySelector('#appsList'),key=new URLSearchParams(location.hash.slice(1)).get('k'),nativeMotion=navigator.userAgent.includes('RayApp/'),motionButton=document.querySelector('#motionMode'),motionState=document.querySelector('#motionState');let wxId='',wxAsk=false,lastWx={},wxBusy=false,ws,tries=0,timer,seq=0,motionEnabled=false,lastMotion=0,rayActive=false,audioState,vpnState;const it=navigator.language.toLowerCase().startsWith('it');const I18N={"de":{"Launcher theme":"Launcher-Design","Color":"Farbe","Remote":"Fernbedienung","Style":"Stil","Liquid glass":"Flüssiges Glas","Liquid metal":"Flüssiges Metall","Glow":"Leuchtend","Background only":"Nur Hintergrund","Copied":"Kopiert","Motion · ":"Bewegung · ","On":"An","Off":"Aus","Recenter":"Neu zentrieren","Saved":"Gespeichert","Unknown city or invalid key":"Unbekannte Stadt oder ungültiger Schlüssel","For playback controls, enable on the TV: Settings → App companion (media access).":"Für die Wiedergabesteuerung aktiviere am Fernseher: Einstellungen → Companion-App (Medienzugriff).","Suggested by ":"Empfohlen von ","TV panel: ":"Panel am Fernseher: ","on":"ja","off":"nein","last key ":"letzte Taste ","Open VPN app":"VPN-App öffnen","VPN settings":"VPN-Einstellungen","VPN app":"VPN-App","VPN status unavailable":"VPN-Status nicht verfügbar","TV uses VPN":"Der Fernseher nutzt VPN","TV is not using VPN":"Der Fernseher nutzt kein VPN"," · no VPN app installed":" · keine VPN-App installiert","All apps":"Alle Apps","Search in the app":"In der App suchen","Day/night":"Tag/Nacht","Automatic":"Automatisch","Day":"Tag","Night":"Nacht","Connecting…":"Verbinden…","TV not found":"Fernseher nicht gefunden","Make sure the phone and the TV are on the same Wi-Fi network.":"Prüfe, ob Telefon und Fernseher im selben Wi-Fi-Netzwerk sind.","Retry":"Erneut versuchen","No TV connected":"Kein Fernseher verbunden","Connect your TV":"Verbinde deinen Fernseher","Open RAY on the TV, on the same Wi-Fi: it will show up below. Tap it and type the code under the QR, or scan the QR.":"Öffne RAY auf dem Fernseher im selben Wi-Fi-Netzwerk: Er erscheint unten. Tippe darauf und gib den Code unter dem QR-Code ein oder scanne den QR-Code.","Looking for TVs with RAY…":"Suche nach Fernsehern mit RAY…","Scan QR":"QR-Code scannen","Paste link":"Link einfügen","Code under the TV QR":"Code unter dem QR-Code am Fernseher","Connect ":"Verbinden mit ","Apps":"Apps","Settings":"Einstellungen","Device":"Gerät","Motion aiming":"Zielen per Bewegung","Choose device":"Gerät wählen","Cinema":"Kino","Reset":"Zurücksetzen","Volume":"Lautstärke","Screen light":"Bildschirmlicht","Touchpad":"Touchpad","Connected":"Verbunden","Authenticating…":"Authentifizierung…","Disconnected · reconnecting":"Getrennt · Neuverbindung","Missing pairing key (#k=…)":"Kopplungsschlüssel fehlt (#k=…)","Pairing key rejected":"Kopplungsschlüssel abgelehnt","Command failed":"Befehl fehlgeschlagen","To control other apps, turn on RAY in Settings > Accessibility on the TV":"Um andere Apps zu steuern, aktiviere RAY unter Einstellungen > Bedienungshilfen auf dem Fernseher","Focused: ":"Im Vordergrund: ","No device selected":"Kein Gerät ausgewählt","Motion aiming requires the RAY app.":"Zielen per Bewegung braucht die RAY-App.","Move your phone to point. Tap OK to select.":"Bewege dein Telefon zum Zielen. Tippe auf OK zum Auswählen.","Motion paused.":"Bewegung pausiert.","Motion sensor unavailable.":"Bewegungssensor nicht verfügbar.","Open RAY controls":"RAY-Steuerung öffnen","Cyan":"Cyan","Violet":"Violett","Amber":"Bernstein","Emerald":"Smaragd","Back":"Zurück","Home":"Home","Menu":"Menu"},"fr":{"Launcher theme":"Thème du launcher","Color":"Couleur","Remote":"Télécommande","Style":"Style","Liquid glass":"Verre liquide","Liquid metal":"Métal liquide","Glow":"Lumineux","Background only":"Fond uniquement","Copied":"Copié","Motion · ":"Mouvement · ","On":"Activé","Off":"Désactivé","Recenter":"Recentrer","Saved":"Enregistré","Unknown city or invalid key":"Ville inconnue ou clé invalide","For playback controls, enable on the TV: Settings → App companion (media access).":"Pour les contrôles de lecture, active l'option sur la TV: Paramètres → App compagnon (accès aux médias).","Suggested by ":"Suggéré par ","TV panel: ":"Panneau de la TV: ","on":"oui","off":"non","last key ":"dernière touche ","Open VPN app":"Ouvrir l'app VPN","VPN settings":"Paramètres VPN","VPN app":"App VPN","VPN status unavailable":"État du VPN indisponible","TV uses VPN":"La TV utilise le VPN","TV is not using VPN":"La TV n'utilise pas le VPN"," · no VPN app installed":" · aucune app VPN installée","All apps":"Toutes les apps","Search in the app":"Rechercher dans l'app","Day/night":"Jour/nuit","Automatic":"Automatique","Day":"Jour","Night":"Nuit","Connecting…":"Connexion…","TV not found":"TV introuvable","Make sure the phone and the TV are on the same Wi-Fi network.":"Vérifie que le téléphone et la TV sont sur le même réseau Wi-Fi.","Retry":"Réessayer","No TV connected":"Aucune TV connectée","Connect your TV":"Connecte ta TV","Open RAY on the TV, on the same Wi-Fi: it will show up below. Tap it and type the code under the QR, or scan the QR.":"Ouvre RAY sur la TV, sur le même réseau Wi-Fi: elle apparaîtra ci-dessous. Touche-la et saisis le code sous le QR, ou scanne le QR.","Looking for TVs with RAY…":"Recherche de TV avec RAY…","Scan QR":"Scanner le QR","Paste link":"Coller le lien","Code under the TV QR":"Code sous le QR de la TV","Connect ":"Connecter à ","Apps":"Apps","Settings":"Paramètres","Device":"Appareil","Motion aiming":"Visée par mouvement","Choose device":"Choisir l'appareil","Cinema":"Cinéma","Reset":"Réinitialiser","Volume":"Volume","Screen light":"Lumière d'écran","Touchpad":"Pavé tactile","Connected":"Connecté","Authenticating…":"Authentification…","Disconnected · reconnecting":"Déconnecté · reconnexion","Missing pairing key (#k=…)":"Clé d'association manquante (#k=…)","Pairing key rejected":"Clé d'association refusée","Command failed":"Échec de la commande","To control other apps, turn on RAY in Settings > Accessibility on the TV":"Pour contrôler les autres apps, active RAY dans Paramètres > Accessibilité sur la TV","Focused: ":"En premier plan: ","No device selected":"Aucun appareil sélectionné","Motion aiming requires the RAY app.":"La visée par mouvement nécessite l'app RAY.","Move your phone to point. Tap OK to select.":"Bouge ton téléphone pour viser. Touche OK pour sélectionner.","Motion paused.":"Mouvement en pause.","Motion sensor unavailable.":"Capteur de mouvement indisponible.","Open RAY controls":"Ouvrir les contrôles de RAY","Cyan":"Cyan","Violet":"Violet","Amber":"Ambre","Emerald":"Émeraude","Back":"Retour","Home":"Home","Menu":"Menu"},"es":{"Launcher theme":"Tema del launcher","Color":"Color","Remote":"Mando","Style":"Estilo","Liquid glass":"Cristal líquido","Liquid metal":"Metal líquido","Glow":"Luminoso","Background only":"Solo fondo","Copied":"Copiado","Motion · ":"Movimiento · ","On":"Activado","Off":"Desactivado","Recenter":"Recentrar","Saved":"Guardado","Unknown city or invalid key":"Ciudad desconocida o clave no válida","For playback controls, enable on the TV: Settings → App companion (media access).":"Para los controles de reproducción, activa en la TV: Ajustes → App complementaria (acceso a multimedia).","Suggested by ":"Sugerido por ","TV panel: ":"Panel de la TV: ","on":"sí","off":"no","last key ":"última tecla ","Open VPN app":"Abrir app VPN","VPN settings":"Ajustes de VPN","VPN app":"App VPN","VPN status unavailable":"Estado de VPN no disponible","TV uses VPN":"La TV usa la VPN","TV is not using VPN":"La TV no usa la VPN"," · no VPN app installed":" · ninguna app VPN instalada","All apps":"Todas las apps","Search in the app":"Buscar en la app","Day/night":"Día/noche","Automatic":"Automático","Day":"Día","Night":"Noche","Connecting…":"Conectando…","TV not found":"TV no encontrada","Make sure the phone and the TV are on the same Wi-Fi network.":"Comprueba que el teléfono y la TV estén en la misma red Wi-Fi.","Retry":"Reintentar","No TV connected":"Ninguna TV conectada","Connect your TV":"Conecta tu TV","Open RAY on the TV, on the same Wi-Fi: it will show up below. Tap it and type the code under the QR, or scan the QR.":"Abre RAY en la TV, en la misma red Wi-Fi: aparecerá abajo. Tócala y escribe el código debajo del QR, o escanea el QR.","Looking for TVs with RAY…":"Buscando TVs con RAY…","Scan QR":"Escanear QR","Paste link":"Pegar enlace","Code under the TV QR":"Código bajo el QR de la TV","Connect ":"Conectar a ","Apps":"Apps","Settings":"Ajustes","Device":"Dispositivo","Motion aiming":"Puntería por movimiento","Choose device":"Elegir dispositivo","Cinema":"Cine","Reset":"Restablecer","Volume":"Volumen","Screen light":"Luz de pantalla","Touchpad":"Touchpad","Connected":"Conectado","Authenticating…":"Autenticando…","Disconnected · reconnecting":"Desconectado · reconectando","Missing pairing key (#k=…)":"Falta la clave de vinculación (#k=…)","Pairing key rejected":"Clave de vinculación rechazada","Command failed":"Comando fallido","To control other apps, turn on RAY in Settings > Accessibility on the TV":"Para controlar otras apps, activa RAY en Ajustes > Accesibilidad de la TV","Focused: ":"En primer plano: ","No device selected":"Ningún dispositivo seleccionado","Motion aiming requires the RAY app.":"La puntería por movimiento necesita la app RAY.","Move your phone to point. Tap OK to select.":"Mueve el teléfono para apuntar. Toca OK para seleccionar.","Motion paused.":"Movimiento en pausa.","Motion sensor unavailable.":"Sensor de movimiento no disponible.","Open RAY controls":"Abrir controles de RAY","Cyan":"Cian","Violet":"Violeta","Amber":"Ámbar","Emerald":"Esmeralda","Back":"Atrás","Home":"Home","Menu":"Menu"}},uiLang=(navigator.language||'en').slice(0,2).toLowerCase();const tr=(en,i)=>it&&i!==undefined?i:((I18N[uiLang]||{})[en]||en);if(!nativeMotion){const g=document.querySelector('#getApk');g.hidden=false;if(it)g.firstElementChild.textContent='Scarica l’app Android'}const labels=it?{remote:'Telecomando',apps:'App',settings:'Impostazioni',device:'Dispositivo',motion:'Puntamento con movimento',choose:'Scegli dispositivo',cinema:'Cinema',night:'Notte',reset:'Ripristina',volume:'Volume',light:'Luce schermo',touch:'Touchpad',connected:'Connesso',auth:'Autenticazione…',disconnected:'Disconnesso · riconnessione…',missing:'Chiave di abbinamento assente (#k=…)',rejected:'Chiave di abbinamento non valida',failed:'Comando non riuscito',a11y:'Per comandare le altre app attiva RAY in Impostazioni > Accessibilità sulla TV',focused:'In primo piano: ',noDevice:'Nessun dispositivo selezionato',motionApp:'Il puntamento richiede l’app RAY.',point:'Inclina il telefono per puntare. Tocca OK per selezionare.',paused:'Movimento in pausa.',sensor:'Sensore di movimento non disponibile.',full:'Apri i controlli di RAY'}:Object.fromEntries(Object.entries({remote:'Remote',apps:'Apps',settings:'Settings',device:'Device',motion:'Motion aiming',choose:'Choose device',cinema:'Cinema',night:'Night',reset:'Reset',volume:'Volume',light:'Screen light',touch:'Touchpad',connected:'Connected',auth:'Authenticating…',disconnected:'Disconnected · reconnecting',missing:'Missing pairing key (#k=…)',rejected:'Pairing key rejected',failed:'Command failed',a11y:'To control other apps, turn on RAY in Settings > Accessibility on the TV',focused:'Focused: ',noDevice:'No device selected',motionApp:'Motion aiming requires the RAY app.',point:'Move your phone to point. Tap OK to select.',paused:'Motion paused.',sensor:'Motion sensor unavailable.',full:'Open RAY controls'}).map(([k,v])=>[k,tr(v)]));
-  document.documentElement.lang=tr('en','it');document.querySelectorAll('[data-tab]').forEach(b=>{b.querySelector('span').textContent=labels[b.dataset.tab]});document.querySelector('#motionSettings').textContent=labels.motion;document.querySelector('#chooseDevice').textContent=labels.choose;document.querySelector('#deviceSelect').textContent=labels.choose;document.querySelector('#lightLabel').textContent=labels.light;document.querySelector('#themeLabel').textContent=tr('Launcher theme','Tema launcher');document.querySelector('#themeColorLabel').textContent=tr('Color','Colore');document.querySelector('#remoteSkinLabel').textContent=tr('Remote','Telecomando');document.querySelector('#themeStyleLabel').textContent=tr('Style','Stile');document.querySelector('#themeStyle').options[0].text=tr('Liquid glass','Vetroliquido');document.querySelector('#themeStyle').options[1].text=tr('Liquid metal','Metalloliquido');document.querySelector('#themeStyle').options[2].text=tr('Glow','Luminoso');document.querySelector('#themeStyle').options[3].text=tr('Background only','Solo sfondo');document.querySelectorAll('[data-theme-color]').forEach((b,i)=>b.textContent=(it?['Ciano','Viola','Ambra','Smeraldo']:['Cyan','Violet','Amber','Emerald'].map(x=>tr(x)))[i]);;document.querySelectorAll('[data-scene]').forEach(b=>b.textContent=labels[b.dataset.scene]);document.querySelector('#deviceNameAlt').textContent=labels.noDevice;for(const link of document.querySelectorAll('#deviceLink,#deviceLinkAlt')){link.textContent=labels.full;link.href='/#k='+encodeURIComponent(key||'')}document.querySelectorAll('.quick button').forEach(b=>b.lastElementChild.textContent=it?({back:'Indietro',home:'Home',menu:'Menu'}[b.dataset.action]):tr({back:'Back',home:'Home',menu:'Menu'}[b.dataset.action]));
-  document.querySelector('#dbgPanel').onclick=e=>send('debug.set',{on:!e.target.dataset.on});document.querySelector('#dbgCopy').onclick=()=>{const t=JSON.stringify(lastState,null,1);(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>document.querySelector('#dbgCopy').textContent=tr('Copied','Copiato'),()=>{document.querySelector('#dbgLog').textContent=t})};if(it){document.querySelector('#dbgCopy').textContent='Copia stato'}
-  function tab(id){document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id===id));document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===id))}document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>tab(b.dataset.tab));
-  function setMotion(on){motionEnabled=!!on;motionButton.setAttribute('aria-pressed',String(motionEnabled));motionButton.textContent=(tr('Motion · ','Movimento · '))+(motionEnabled?(tr('On','Attivo')):(tr('Off','Spento')));motionState.hidden=false;motionState.textContent=motionEnabled?labels.point:labels.paused;recenterButton.style.display=motionEnabled?'':'none';if(!motionEnabled)send('remote.pointer',{visible:false})}window.RayNativeMotionEnabled=(enabled,available)=>{if(!available){setMotion(false);motionButton.disabled=true;motionState.textContent=labels.sensor;return}motionButton.disabled=false;setMotion(enabled)};const motionAction=action=>location.href='ray-app://motion/'+action;motionButton.onclick=()=>{let start=!motionEnabled;setMotion(start);motionAction(start?'start':'stop')};document.querySelector('#motionSettings').onclick=()=>location.href='ray-app://settings/motion';window.RayNativeDelta=(dx,dy)=>{if(nativeMotion&&motionEnabled&&Number.isFinite(dx)&&Number.isFinite(dy))send('remote.delta',{dx,dy})};window.RayNativeSelect=()=>{if(nativeMotion&&motionEnabled)send('remote.key',{key:'OK'})};const recenterButton=document.querySelector('#recenter');recenterButton.textContent=tr('Recenter','Ricentra');recenterButton.onclick=()=>location.href='ray-app://motion/recenter';window.RayNativeRecenter=()=>{if(nativeMotion&&motionEnabled)send('remote.pointer',{x:.5,y:.5})};if(nativeMotion){document.documentElement.classList.add('native-motion');setMotion(false)}else{motionState.hidden=false;motionState.textContent=labels.motionApp;document.querySelector('#motionSettings').disabled=true}
-  function connect(){if(!key){status.textContent=labels.missing;return}ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/ws');ws.onopen=()=>{tries=0;clearInterval(ws.pinger);ws.pinger=setInterval(()=>{if(ws.readyState===1)ws.send('{"type":"ping"}')},5000);status.textContent=labels.auth;ws.send(JSON.stringify({type:'auth',key,client:{name:'Browser',version:1}}))};ws.onclose=()=>{status.textContent=labels.disconnected;clearTimeout(timer);timer=setTimeout(connect,Math.min(1000*2**tries++,15000))};ws.onerror=()=>ws.close();ws.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch(_){return}if(m.type==='auth.ok'){status.textContent=labels.connected;return}if(m.type==='auth.error'){status.textContent=labels.rejected;ws.close();return}if(m.type==='state.snapshot'){rayActive=!!m.payload.active;paint(m.payload)}if(m.type==='ack'){if(m.id===wxId){wxBusy=false;document.querySelector('#wxSave').disabled=false;document.querySelector('#wxMsg').textContent=m.ok?(tr('Saved','Salvato')):(tr('Unknown city or invalid key','Città sconosciuta o chiave non valida'))}else if(!m.ok)status.textContent=m.error==='accessibility'?labels.a11y:labels.failed}}}
-  function send(type,payload={}){if(ws&&ws.readyState===1)ws.send(JSON.stringify({type,id:String(++seq),payload}))}let nowState=null,nowAt=0,showList=false,lastFg='';const fmt=ms=>{ms=Math.max(0,ms|0);let t=Math.floor(ms/1000),h=Math.floor(t/3600),m=Math.floor(t/60)%60,x=String(t%60).padStart(2,'0');return h?h+':'+String(m).padStart(2,'0')+':'+x:m+':'+x};function nowPos(){if(!nowState)return 0;let p=nowState.position||0;if(nowState.playing)p+=(Date.now()-nowAt)*(nowState.speed||1);return nowState.duration>0?Math.min(p,nowState.duration):p}function tickNow(){if(!nowState||document.querySelector('#nowApp').hidden)return;let p=nowPos(),d=nowState.duration||0;document.querySelector('#nowPos').textContent=fmt(p);document.querySelector('#nowDur').textContent=fmt(d);if(!seeking)document.querySelector('#nowSeek').value=d>0?Math.round(p/d*1000):0}let seeking=false;setInterval(tickNow,1000);function paintNow(s){let m=s.media||{},fg=s.foregroundPackage||'',other=fg&&fg!=='dev.raylauncher';if(fg!==lastFg){lastFg=fg;showList=false}let name=m.app||fg,box=document.querySelector('#nowApp');box.hidden=!other||showList;document.querySelector('#allApps').hidden=!box.hidden;let back=document.querySelector('#backToApp');back.hidden=!other;back.textContent='← '+name;if(!other)return;nowState=m.session?m:null;nowAt=Date.now();document.querySelector('#nowAppName').textContent=name;document.querySelector('#nowTitle').textContent=m.session?(m.title||name):name;document.querySelector('#nowSub').textContent=m.session?(m.subtitle||''):'';let art=document.querySelector('#nowArt');art.src=m.art?(m.art.startsWith('/')?m.art+'&k='+encodeURIComponent(key):m.art):'';art.style.visibility=m.art?'visible':'hidden';document.querySelector('#nowPlay').classList.toggle('on',!!m.playing);document.querySelectorAll('[data-mc]').forEach(b=>b.disabled=!m.session);document.querySelector('[data-mc=next]').disabled=!m.canNext;document.querySelector('[data-mc=previous]').disabled=!m.canPrevious;document.querySelector('#nowSeek').disabled=!m.canSeek;document.querySelector('.now-bar').hidden=!m.session;document.querySelector('#nowSearch').hidden=!m.searchable;let hint=document.querySelector('#nowHint');hint.hidden=!!m.access;hint.textContent=tr('For playback controls, enable on the TV: Settings → App companion (media access).','Per i controlli di riproduzione attiva sul TV: Impostazioni → Companion app (accesso media).');let sug=m.suggestions||[];document.querySelector('#nowSugTitle').textContent=sug.length?(tr('Suggested by ','Consigliati da '))+name:'';document.querySelector('#nowSug').replaceChildren(...sug.map(x=>{let b=document.createElement('button'),i=document.createElement('img'),t=document.createElement('span');if(x.art){i.src=x.art;i.loading='lazy'}i.alt='';t.textContent=x.title;b.append(i,t);b.onclick=()=>send('media.open',{index:x.index});return b}));tickNow()}function paintWx(s){lastWx=s;const on=!!s.weatherConsent;document.querySelector('#wxForm').hidden=!on;document.querySelector('#wxConsent').hidden=on||!wxAsk;document.querySelector('#wxEnable').hidden=on||wxAsk;const c=document.querySelector('#wxCity'),p=document.querySelector('#wxProv'),w=s.weather;if(document.activeElement!==c&&s.weatherCity!==undefined)c.value=s.weatherCity;if(document.activeElement!==p&&s.weatherProvider)p.value=s.weatherProvider;document.querySelector('#wxKeyW').hidden=p.value==='openmeteo';if(!wxBusy&&w&&!document.querySelector('#wxMsg').textContent)document.querySelector('#wxMsg').textContent=w.city+' · '+w.temp+'°'}let lastState={};function paintDbg(s){const d=s.debug;if(!d)return;lastState=s;const b=document.querySelector('#dbgPanel');b.textContent=(tr('TV panel: ','Pannello sulla TV: '))+(d.on?(tr('on','sì')):(tr('off','no')));b.dataset.on=d.on?'1':'';document.querySelector('#dbgInfo').textContent='Android '+d.sdk+', heap '+d.heapMb+'/'+d.heapMaxMb+' MB, MCP '+(d.mcp?(tr('on','attivo')):(tr('off','spento')))+', '+(tr('last key ','ultimo tasto '))+d.lastKey;document.querySelector('#dbgLog').textContent=(d.log||[]).slice().reverse().join('\n')}function paint(s={}){paintNow(s);paintDbg(s);paintWx(s);focus.textContent=s.focusedPackage?labels.focused+s.focusedPackage:(s.device||'RAY');let device=(s.manufacturer||'')+' '+(s.device||'RAY');document.querySelector('#deviceName').textContent=device.trim();document.querySelector('#deviceNameAlt').textContent=device.trim();list.replaceChildren(...(s.apps||[]).map(a=>{let b=document.createElement('button');let n=a.name||a.package||'App',ic=document.createElement('span'),nm=document.createElement('span');ic.className='ic';ic.setAttribute('aria-hidden','true');ic.textContent=String.fromCodePoint(n.codePointAt(0)).toUpperCase();nm.className='nm';nm.textContent=n;b.append(ic,nm);b.title=n;b.onclick=()=>send('app.launch',{package:a.package});return b}));if(s.filter){let l=document.querySelector('#light');l.value=s.filter.bright||100;document.querySelector('#lightValue').textContent=l.value+'%'}if(s.audio){audioState=s.audio;let vol=s.audio.volume;if(vol&&typeof vol==='object'){let level=Number(vol.level);document.querySelector('#volumeValue').textContent=Number.isFinite(level)?level:'—'}else if(Number.isFinite(vol)){audioState={...s.audio,volume:{level:vol,min:0,max:100}};document.querySelector('#volumeValue').textContent=vol}}if(s.vpn){vpnState=s.vpn;const sel=document.querySelector('#vpnApp'),apps=s.vpn.apps||[],sig=JSON.stringify(apps);if(sel.dataset.sig!==sig){sel.dataset.sig=sig;sel.replaceChildren(...apps.map(x=>{const o=document.createElement('option');o.value=x.pkg;o.textContent=x.name;return o}))}if(document.activeElement!==sel&&s.vpn.preferred)sel.value=s.vpn.preferred;document.querySelector('#vpnOpen').disabled=!apps.length;document.querySelector('#vpnOpen').textContent=tr('Open VPN app','Apri app VPN');document.querySelector('#vpnSettings').textContent=tr('VPN settings','Impostazioni VPN');document.querySelector('#vpnAppL').textContent=tr('VPN app','App VPN');sel.closest('label').hidden=!apps.length;document.querySelector('#vpnStatus').textContent=!s.vpn.known?(tr('VPN status unavailable','Stato VPN non disponibile')):(s.vpn.active?(tr('TV uses VPN','La TV usa la VPN')):(tr('TV is not using VPN','La TV non usa la VPN')))+(apps.length?'':(tr(' · no VPN app installed',' · nessuna app VPN installata')))}{const dn=document.querySelector('#dayNight');if(document.activeElement!==dn&&s.theme&&s.theme.daynight)dn.value=s.theme.daynight}let themeSupported=s.capabilities?.theme??!!s.theme;document.querySelector('#themeSettings').disabled=!themeSupported;if(s.theme){fillSkins(s.theme);document.querySelector('#themeColor').value=s.theme.color||'#24dcff';document.querySelector('#themeStyle').value=s.theme.style||'glass';document.querySelector('#themeSkin').value=s.theme.skin||'essenziale';document.querySelector('#remoteSkin').value=s.theme.remoteSkin||'match';document.documentElement.dataset.skin=remoteSkinOf(s.theme)}let mediaSupported=s.capabilities?.media??s.mediaSupported??s.globalInput;document.querySelectorAll('[data-media]').forEach(b=>b.disabled=!mediaSupported)}
-  {const wk=document.querySelector('#wxKeyW'),wp=document.querySelector('#wxProv');if(it){document.querySelector('#wxCityL').textContent='Città';document.querySelector('#wxKeyL').textContent='Chiave API (vuota = tieni quella salvata)';wp.options[0].text='Open-Meteo (senza chiave)'}else{document.querySelector('#wxLabel').textContent='Weather';document.querySelector('#wxCityL').textContent='City';document.querySelector('#wxKeyL').textContent='API key (empty keeps the saved one)';wp.options[0].text='Open-Meteo (no key)';document.querySelector('#wxSave').textContent='Save'}wp.onchange=()=>{wk.hidden=wp.value==='openmeteo'};document.querySelector('#wxSave').onclick=()=>{const k=document.querySelector('#wxKey');wxBusy=true;document.querySelector('#wxSave').disabled=true;document.querySelector('#wxMsg').textContent='…';send('weather.set',{city:document.querySelector('#wxCity').value.trim(),provider:wp.value,key:k.value});wxId=String(seq);k.value=''}}{const q=x=>document.querySelector(x);q('#wxConsentT').textContent='Per il meteo la TV contatta il servizio scelto (Open-Meteo, server in UE; oppure OpenWeatherMap) inviando il nome della città e le sue coordinate; il servizio vede l’indirizzo IP della TV. Nessun altro dato viene inviato.';q('#wxEnable').onclick=()=>{wxAsk=true;paintWx(lastWx)};q('#wxNo').onclick=()=>{wxAsk=false;paintWx(lastWx)};q('#wxYes').onclick=()=>{wxAsk=false;send('weather.consent',{accepted:true})};q('#wxOff').onclick=()=>send('weather.consent',{accepted:false});if(!it){q('#wxEnable').textContent='Turn on weather';q('#wxYes').textContent='Accept';q('#wxNo').textContent='Cancel';q('#wxOff').textContent='Turn off weather'}}document.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>send('remote.key',{key:'DPAD_'+b.dataset.c.toUpperCase()}));document.querySelector('[data-c=ok]').onclick=()=>send('remote.key',{key:'OK'});document.querySelector('[data-action=back]').onclick=()=>send('remote.key',{key:'BACK'});document.querySelector('[data-action=home]').onclick=()=>send('launcher.home');document.querySelector('[data-action=menu]').onclick=()=>send('remote.key',{key:'MENU'});document.querySelectorAll('[data-media]').forEach(b=>b.onclick=()=>send('remote.key',{key:b.dataset.media}));document.querySelectorAll('[data-mc]').forEach(b=>b.onclick=()=>{let a=b.dataset.mc;if(a==='back')send('media.control',{action:'seek',ms:-10000});else if(a==='forward')send('media.control',{action:'seek',ms:10000});else send('media.control',{action:a})});let seekBar=document.querySelector('#nowSeek');seekBar.oninput=()=>{seeking=true;if(nowState?.duration)document.querySelector('#nowPos').textContent=fmt(seekBar.value/1000*nowState.duration)};seekBar.onchange=()=>{seeking=false;if(nowState?.duration){let ms=Math.round(seekBar.value/1000*nowState.duration);nowState.position=ms;nowAt=Date.now();send('media.control',{action:'seekTo',ms})}};document.querySelector('#nowSearch').onsubmit=e=>{e.preventDefault();let q=document.querySelector('#nowQuery').value.trim();if(q)send('media.search',{query:q})};document.querySelector('#showAllApps').onclick=()=>{showList=true;document.querySelector('#nowApp').hidden=true;document.querySelector('#allApps').hidden=false};document.querySelector('#backToApp').onclick=()=>{showList=false;document.querySelector('#nowApp').hidden=false;document.querySelector('#allApps').hidden=true};document.querySelector('#showAllApps').textContent=tr('All apps','Tutte le app');document.querySelector('#nowQuery').placeholder=tr('Search in the app','Cerca nell’app');document.querySelectorAll('[data-volume]').forEach(b=>b.onclick=()=>{let v=audioState?.volume;if(!v||typeof v!=='object')return;let next=Math.max(Number(v.min)||0,Math.min(Number(v.max)||100,(Number(v.level)||0)+Number(b.dataset.volume)));send('audio.set',{volume:next});v.level=next;document.querySelector('#volumeValue').textContent=next});document.querySelectorAll('[data-scene]').forEach(b=>b.onclick=()=>send('scene.apply',{scene:b.dataset.scene}));document.querySelector('#chooseDevice').onclick=document.querySelector('#deviceSelect').onclick=()=>{location.href=nativeMotion?'ray-app://devices/select':'/#k='+encodeURIComponent(key||'')};let light=document.querySelector('#light'),lightTimer;light.oninput=()=>{document.querySelector('#lightValue').textContent=light.value+'%';clearTimeout(lightTimer);lightTimer=setTimeout(()=>send('filter.set',{bright:+light.value}),50)};let themeColor=document.querySelector('#themeColor'),themeStyle=document.querySelector('#themeStyle');document.querySelector('#vpnOpen').onclick=()=>send('vpn.open',{pkg:document.querySelector('#vpnApp').value});document.querySelector('#vpnSettings').onclick=()=>send('vpn.open',{pkg:''});function setTheme(){send('theme.set',{color:themeColor.value,style:themeStyle.value})}themeColor.onchange=setTheme;{const dn=document.querySelector('#dayNight');dn.onchange=()=>send('theme.set',{daynight:dn.value});document.querySelector('#dayNightL').textContent=tr('Day/night','Giorno/notte');[tr('Automatic','Automatico'),tr('Day','Giorno'),tr('Night','Notte')].forEach((x,i)=>dn.options[i].text=x)}document.querySelector('#themeSkin').onchange=e=>send('theme.set',{skin:e.target.value});document.querySelector('#remoteSkin').onchange=e=>send('theme.set',{remoteSkin:e.target.value});{const sb=document.querySelector('#skinInstall'),sf=document.querySelector('#skinFile'),lb=IT?'Installa skin (.zip)':'Install skin (.zip)';sb.textContent=lb;sb.onclick=()=>sf.click();sf.onchange=async()=>{const f=sf.files[0];sf.value='';if(!f)return;sb.textContent='...';try{const r=await fetch('/api/skin',{method:'POST',headers:{'X-Key':key},body:f}),j=await r.json();sb.textContent=r.ok?(IT?'Installata: ':'Installed: ')+j.id:(IT?'Errore: ':'Error: ')+(j.error||r.status)}catch(e){sb.textContent=IT?'Errore di rete':'Network error'}setTimeout(()=>{sb.textContent=lb},4000)}}{const wu=document.querySelector('#wpUpload'),wr=document.querySelector('#wpReset'),wf=document.querySelector('#wpFile'),wm=document.querySelector('#wpMsg');wu.textContent=IT?'Sfondo TV…':'TV wallpaper…';wr.textContent=IT?'Ripristina':'Restore';const call=async(url,body,ok)=>{wm.textContent='…';wu.disabled=wr.disabled=true;try{const r=await fetch(url,{method:'POST',headers:{'X-Key':key},body}),j=await r.json().catch(()=>({}));wm.textContent=r.ok?ok:(IT?'Errore: ':'Error: ')+(j.error||r.status)}catch(e){wm.textContent=IT?'Errore di rete':'Network error'}wu.disabled=wr.disabled=false;setTimeout(()=>{wm.textContent=''},5000)};wu.onclick=()=>wf.click();wf.onchange=()=>{const f=wf.files[0];wf.value='';if(!f)return;if(f.size>15<<20){wm.textContent=IT?'Immagine troppo grande (max 15 MB)':'Image too large (max 15 MB)';return}call('/api/wallpaper',f,IT?'Sfondo aggiornato':'Wallpaper updated')};wr.onclick=()=>call('/api/wallpaper?reset=1',null,IT?'Sfondo predefinito ripristinato':'Default wallpaper restored')}themeStyle.onchange=()=>{if(themeStyle.value==='horror')themeColor.value='#840c18';if(themeStyle.value==='flood')themeColor.value='#24dcff';setTheme()};document.querySelectorAll('[data-theme-color]').forEach(b=>b.onclick=()=>{themeColor.value=b.dataset.themeColor;setTheme()});window.addEventListener('keydown',e=>{if(e.target.matches('input,select,textarea,[contenteditable="true"]'))return;let k={ArrowUp:'DPAD_UP',ArrowDown:'DPAD_DOWN',ArrowLeft:'DPAD_LEFT',ArrowRight:'DPAD_RIGHT',Enter:'OK',Escape:'BACK',Backspace:'BACK',Home:'HOME'}[e.key];if(k){e.preventDefault();send(k==='HOME'?'launcher.home':'remote.key',{key:k})}});status.textContent=tr('Connecting…','Connessione…');
-  {const off=document.querySelector('#offline'),retry=document.querySelector('#retry');document.querySelector('#offTitle').textContent=tr('TV not found','TV non trovata');document.querySelector('#offSub').textContent=tr('Make sure the phone and the TV are on the same Wi-Fi network.','Controlla che il telefono e la TV siano sulla stessa rete Wi-Fi.');retry.textContent=tr('Retry','Riprova');
-  const setConn=()=>{const t=status.textContent,c=t===labels.connected?'ok':(t===labels.auth||t===(tr('Connecting…','Connessione…')))?'wait':t===labels.failed?(document.body.dataset.conn||'ok'):'down';document.body.dataset.conn=c;off.hidden=c!=='down'};
-  new MutationObserver(setConn).observe(status,{childList:true,characterData:true,subtree:true});setConn();
-  retry.onclick=()=>{clearTimeout(timer);tries=0;status.textContent=tr('Connecting…','Connessione…');connect()};
-  document.addEventListener('pointerdown',e=>{if(navigator.vibrate&&e.target.closest('button:not(:disabled)'))navigator.vibrate(8)})}
-  connect();
-  /* RAY app with no TV yet (#local=key of this phone): TVs found on the network + their code, or the QR */
-  if(!key&&nativeMotion){const loc=new URLSearchParams(location.hash.slice(1)).get('local')||'',off=document.querySelector('#offline'),scan=document.querySelector('#retry'),list=document.createElement('div');let picked=false;
-   status.textContent=tr('No TV connected','Nessuna TV collegata');document.querySelector('#offTitle').textContent=tr('Connect your TV','Collega la tua TV');
-   document.querySelector('#offSub').textContent=tr('Open RAY on the TV, on the same Wi-Fi: it will show up below. Tap it and type the code under the QR, or scan the QR.','Apri RAY sulla TV, sulla stessa rete Wi-Fi: comparirà qui sotto. Toccala e scrivi il codice sotto il QR, oppure scansiona il QR.');
-   off.style.animation='none';list.className='apps';list.style.cssText='width:100%;margin-top:12px';list.textContent=tr('Looking for TVs with RAY…','Ricerca TV con RAY…');off.insertBefore(list,scan);
-   scan.textContent=tr('Scan QR','Scansiona QR');scan.onclick=()=>location.href='raylauncher-app://scan';
-   const link=document.createElement('button');link.type='button';link.textContent=tr('Paste link','Incolla link');link.onclick=()=>location.href='raylauncher-app://add';off.appendChild(link);
-   const pair=d=>{picked=true;const f=document.createElement('input'),go=document.createElement('button');f.placeholder=tr('Code under the TV QR','Codice sotto il QR della TV');f.autocomplete='off';f.autocapitalize='off';f.spellcheck=false;
-    f.style.cssText='width:100%;min-height:48px;border-radius:12px;padding:0 14px;background:rgb(0 0 0/30%);border:1px solid var(--line2);color:var(--ink)';go.type='button';go.textContent=(tr('Connect ','Collega '))+(d.name||d.host);
-    go.onclick=()=>{const c=f.value.toLowerCase().replace(/[^0-9a-f]/g,'');if(c)location.href='raylauncher://add?'+new URLSearchParams({host:d.host,port:d.port,k:c,name:d.name||''})};list.style.display='grid';list.replaceChildren(f,go);f.focus()};
-   const poll=()=>{if(picked)return;fetch('/api/discovered',{headers:{'X-Key':loc}}).then(r=>r.json()).then(l=>{if(picked||!l.length)return;list.replaceChildren(...l.map(d=>{const b=document.createElement('button');b.type='button';b.textContent=d.name||d.host;b.onclick=()=>pair(d);return b}))}).catch(()=>{}).finally(()=>setTimeout(poll,2000))};poll()}
-  })();
+function fillSkins(t){const l=t&&t.skins||[],sig=JSON.stringify(l);if(sig===skinSig)return;skinSig=sig;skinList=l;const opt=(v,x)=>{const o=document.createElement('option');o.value=v;o.textContent=x;return o};$('#themeSkin').replaceChildren(...l.map(k=>opt(k.id,skinName(k))));$('#remoteSkin').replaceChildren(opt('match',tr('Same as TV','Come la TV')),...l.map(k=>opt(k.id,skinName(k))))}
+/* the page takes the accent of the skin it follows, lightened until it reads on the dark page (text on it is always dark) */
+function setPalette(k){const st=document.documentElement.style,a=k&&/^#[0-9a-f]{6}$/i.test(k.accent||'')?k.accent:'';if(!a){st.removeProperty('--accent');return}let c=[16,8,0].map(x=>parseInt(a.slice(1),16)>>x&255);const lum=c=>(.299*c[0]+.587*c[1]+.114*c[2])/255;while(lum(c)<.55)c=c.map(x=>x+Math.ceil((255-x)*.15));st.setProperty('--accent','rgb('+c+')')}
+function remoteSkinOf(t){const r=t&&t.remoteSkin&&t.remoteSkin!=='match'?t.remoteSkin:(t&&t.skin)||'cinema';setPalette(skinList.find(x=>x.id===r));return r}
+(()=>{const status=$('#status'),key=new URLSearchParams(location.hash.slice(1)).get('k'),nativeMotion=navigator.userAgent.includes('RayApp/'),motionButton=$('#motionMode'),motionState=$('#motionState'),HOME='dev.raylauncher',it=IT;
+let wxId='',wxAsk=false,lastWx={},wxBusy=false,ws,authed=false,tries=0,timer,seq=0,motionEnabled=false,rayActive=false,audioState,lastState={},shareUrl='',shareId='';
+const L={connected:tr('Connected','Connesso'),auth:tr('Authenticating…','Autenticazione…'),connecting:tr('Connecting…','Connessione…'),disconnected:tr('Disconnected · reconnecting','Disconnesso · riconnessione…'),missing:tr('Missing pairing key (#k=…)','Chiave di abbinamento assente (#k=…)'),rejected:tr('Pairing key rejected','Chiave di abbinamento non valida'),failed:tr('Command failed','Comando non riuscito'),
+ a11y:tr('To control other apps, turn on RAY in Settings > Accessibility on the TV','Per comandare le altre app attiva RAY in Impostazioni > Accessibilità sulla TV'),point:tr('Move your phone to point. Tap OK to select.','Inclina il telefono per puntare. Tocca OK per selezionare.'),paused:tr('Motion paused.','Movimento in pausa.'),sensor:tr('Motion sensor unavailable.','Sensore di movimento non disponibile.'),motionApp:tr('Motion aiming requires the RAY app.','Il puntamento richiede l’app RAY.')};
+const link=x=>x.href='/#k='+encodeURIComponent(key||'');link($('#deviceLink'));link($('#deviceLinkAlt'));
+const tvUrl=u=>u+(u.includes('?')?'&':'?')+'k='+encodeURIComponent(key||'');
+
+/* tabs; Settings is a list and one level of pages */
+function tab(id){document.body.dataset.tab=id;$$('.panel').forEach(p=>p.classList.toggle('active',p.id===id));$$('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===id));if(id!=='settings')page('')}
+$$('[data-tab]').forEach(b=>b.onclick=()=>tab(b.dataset.tab));
+function page(id){$('#sList').hidden=!!id;$('#sHead').hidden=!id;$$('[data-page]').forEach(p=>p.hidden=p.dataset.page!==id);if(id){$('#sTitle').textContent=$(`[data-open=${id}] span`).textContent;$('#sBack').focus()}scrollTo(0,0)}
+$$('[data-open]').forEach(b=>b.onclick=()=>page(b.dataset.open));$('#sBack').onclick=()=>page('');
+window.RayBack=()=>{if(!$('#sHead').hidden){page('');return true}return false};
+$('#tvBtn').onclick=()=>{location.href=nativeMotion?'ray-app://devices/select':'/#k='+encodeURIComponent(key||'')};
+
+/* motion (native app only) */
+function setMotion(on){motionEnabled=!!on;motionButton.setAttribute('aria-pressed',String(motionEnabled));motionButton.textContent=tr('Motion · ','Movimento · ')+(motionEnabled?tr('On','Attivo'):tr('Off','Spento'));motionState.hidden=false;motionState.textContent=motionEnabled?L.point:L.paused;recenterButton.style.display=motionEnabled?'':'none';if(!motionEnabled)send('remote.pointer',{visible:false})}
+window.RayNativeMotionEnabled=(enabled,available)=>{if(!available){setMotion(false);motionButton.disabled=true;motionState.textContent=L.sensor;return}motionButton.disabled=false;setMotion(enabled)};
+const motionAction=a=>location.href='ray-app://motion/'+a;
+motionButton.onclick=()=>{const start=!motionEnabled;setMotion(start);motionAction(start?'start':'stop')};
+$('#motionSettings').onclick=()=>location.href='ray-app://settings/motion';
+window.RayNativeDelta=(dx,dy)=>{if(nativeMotion&&motionEnabled&&Number.isFinite(dx)&&Number.isFinite(dy))send('remote.delta',{dx,dy})};
+window.RayNativeSelect=()=>{if(nativeMotion&&motionEnabled)send('remote.key',{key:'OK'})};
+const recenterButton=$('#recenter');recenterButton.textContent=tr('Recenter','Ricentra');recenterButton.onclick=()=>location.href='ray-app://motion/recenter';
+window.RayNativeRecenter=()=>{if(nativeMotion&&motionEnabled)send('remote.pointer',{x:.5,y:.5})};
+if(nativeMotion)setMotion(false);else{motionState.hidden=false;motionState.textContent=L.motionApp;$('#motionSettings').disabled=true;$('#motionApp').hidden=false;$('#motionApp').textContent=L.motionApp}
+if(nativeMotion)document.documentElement.classList.add('native-motion');else{const g=$('#getApk');g.hidden=false;if(it){g.firstElementChild.textContent='Scarica l’app Android';g.firstElementChild.nextSibling.textContent=' e '}}
+
+/* socket */
+function connect(){if(!key){status.textContent=L.missing;return}
+ ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/ws');
+ ws.onopen=()=>{tries=0;clearInterval(ws.pinger);ws.pinger=setInterval(()=>{if(ws.readyState===1)ws.send('{"type":"ping"}')},5000);status.textContent=L.auth;ws.send(JSON.stringify({type:'auth',key,client:{name:'Browser',version:1}}))};
+ ws.onclose=()=>{authed=false;status.textContent=L.disconnected;clearTimeout(timer);timer=setTimeout(connect,Math.min(1000*2**tries++,15000))};
+ ws.onerror=()=>ws.close();
+ ws.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch(_){return}
+  if(m.type==='auth.ok'){authed=true;status.textContent=L.connected;flushShare();return}
+  if(m.type==='auth.error'){status.textContent=L.rejected;ws.close();if(nativeMotion)location.href='raylauncher-app://rejected';return}
+  if(m.type==='state.snapshot'){rayActive=!!m.payload.active;paint(m.payload)}
+  if(m.type==='ack'){
+   if(m.id===wxId){wxBusy=false;$('#wxSave').disabled=false;$('#wxMsg').textContent=m.ok?tr('Saved','Salvato'):tr('Unknown city or invalid key','Città sconosciuta o chiave non valida')}
+   else if(m.id===shareId&&shareId){shareId='';if(nativeMotion)location.href='ray-app://share/'+(m.ok?'ok':'fail')}
+   else if(!m.ok)status.textContent=m.error==='accessibility'?L.a11y:L.failed}}}
+function send(type,payload={}){if(ws&&ws.readyState===1)ws.send(JSON.stringify({type,id:String(++seq),payload}))}
+/* a link shared to the phone app: sent once the page is signed in */
+function flushShare(){if(!authed||!shareUrl)return;send('url.open',{url:shareUrl});shareId=String(seq);shareUrl=''}
+window.RayShare=u=>{shareUrl=String(u);flushShare()};
+
+/* On TV: playing, an app open, or the TV home */
+const fmt=ms=>{ms=Math.max(0,ms|0);const t=Math.floor(ms/1000),h=Math.floor(t/3600),m=Math.floor(t/60)%60,x=String(t%60).padStart(2,'0');return h?h+':'+String(m).padStart(2,'0')+':'+x:m+':'+x};
+let nowState=null,nowAt=0,seeking=false,showAll=false;const memo={};
+const once=(id,sig,fn)=>{if(memo[id]===sig)return;memo[id]=sig;fn()};
+const nowPos=()=>{if(!nowState)return 0;let p=nowState.position||0;if(nowState.playing)p+=(Date.now()-nowAt)*(nowState.speed||1);return nowState.duration>0?Math.min(p,nowState.duration):p};
+function tickNow(){if(!nowState||$('#tvPlay').hidden)return;const p=nowPos(),d=nowState.duration||0;$('#tvPos').textContent=fmt(p);$('#tvDur').textContent=fmt(d);if(!seeking)$('#tvSeek').value=d>0?Math.round(p/d*1000):0}
+setInterval(tickNow,1000);
+/* app icon: the first letter shows until (or unless) the TV sends the icon */
+function fillIcon(node,pkg,name){const go=f=>node.id?once(node.id,pkg+name,f):f();go(()=>{node.replaceChildren(String.fromCodePoint((name||'?').codePointAt(0)).toUpperCase());if(pkg){const i=new Image();i.alt='';i.onerror=()=>i.remove();i.src=tvUrl('/app-icon?p='+encodeURIComponent(pkg));node.append(i)}})}
+function tile(title,sub,art,fn,prog,icon){const b=el('button','tile'),p=el('span','pic');b.type='button';
+ if(icon){const ic=el('span','ic');fillIcon(ic,icon[0],icon[1]);p.append(ic)}else if(art){const i=new Image();i.alt='';i.loading='lazy';i.src=art;i.onerror=()=>i.remove();p.append(i)}
+ if(prog>0)p.append(Object.assign(el('span','prog'),{style:'width:'+Math.round(prog*100)+'%'}));
+ b.append(p,el('b','',title));if(sub)b.append(el('small','',sub));b.onclick=fn;return b}
+const appTile=(pkg,name)=>tile(name,'',null,()=>send('app.launch',{package:pkg}),0,[pkg,name]);
+const art=u=>u?(u.startsWith('/')?tvUrl(u):u):'';
+const sub=o=>[o.sub,o.minutes>0?o.minutes+' '+tr('min left','min rimasti'):''].filter(Boolean).join(', ');
+function paintTv(s){
+ const m=s.media||{},fg=s.foregroundPackage||'',other=fg&&fg!==HOME,mode=other?(m.session?'play':'app'):'home',name=m.app||fg;
+ $('#tvEmpty').hidden=true;$('#tvApp').hidden=mode==='home';$('#tvHome').hidden=mode!=='home';
+ $('#tvNote').hidden=m.access!==false||localStorage.getItem('ray_noaccess')==='1';
+ if(mode==='home'){
+  const feed=Array.isArray(s.home)?s.home:(s.apps||[]).slice(0,12).map(a=>({k:'app',package:a.package,name:a.name})),watch=feed.filter(o=>o.k==='watch'),apps=feed.filter(o=>o.k!=='watch');
+  once('feed',JSON.stringify(watch),()=>$('#tvFeed').replaceChildren(...watch.map(o=>tile(o.title,sub({sub:o.name,minutes:o.minutes}),tvUrl('/watch-art?i='+o.index),()=>send('watch.open',{index:o.index,title:o.title}),o.progress))));
+  once('apps',JSON.stringify(apps),()=>$('#tvApps').replaceChildren(...apps.map(o=>appTile(o.package,o.name||o.package))));
+  $('#tvFeedW').hidden=!watch.length;$('#tvAppsW').hidden=!apps.length;
+  once('all',JSON.stringify(s.apps||[]),()=>$('#allGrid').replaceChildren(...(s.apps||[]).map(a=>appTile(a.package,a.name||a.package))));
+  $('#allGrid').hidden=!showAll;$('#moreApps').setAttribute('aria-expanded',String(showAll));$('#moreApps').hidden=!(s.apps||[]).length;
+  $('#tvEmpty').hidden=!!(feed.length||(s.apps||[]).length);if(!$('#tvEmpty').hidden)$('#tvEmpty').textContent=tr('No apps yet','Nessuna app');
+  nowState=null;return}
+ const play=mode==='play';
+ $('#tvPlay').hidden=!play;$('#tvAppHero').hidden=play;$('#tvShort').hidden=play;
+ nowState=play?m:null;nowAt=Date.now();
+ if(play){
+  $('#tvTitle').textContent=m.title||name;$('#tvSub').textContent=(m.subtitle?m.subtitle:name);
+  const a=$('#tvArt'),u=art(m.art);once('art',u,()=>{if(u)a.src=u;else a.removeAttribute('src')});a.hidden=!u;
+  $('#tvToggle').classList.toggle('on',!!m.playing);
+  $('[data-mc=next]').hidden=!m.canNext;$('[data-mc=previous]').hidden=!m.canPrevious;$('.ctl2').hidden=!(m.canNext||m.canPrevious);$('#tvSeek').disabled=!m.canSeek;
+  tickNow()}
+ else{fillIcon($('#tvAppIc'),fg,name);$('#tvAppName').textContent=name}
+ $('#tvSearch').hidden=!m.searchable;$('#tvKbd').hidden=!m.searchable;$('#tvQuery').placeholder=tr('Search in ','Cerca in ')+name;$('#tvQuery').setAttribute('aria-label',$('#tvQuery').placeholder);
+ /* this app's own lists: its Watch Next (continue) and its preview programs (suggested); none published, none shown */
+ for(const [list,box,wrap] of [[m.continue||[],'#tvContL','#tvCont'],[m.suggestions||[],'#tvSuggL','#tvSugg']]){
+  $(wrap).hidden=!list.length;
+  once(box+fg,JSON.stringify(list),()=>$(box).replaceChildren(...list.map(x=>tile(x.title,sub(x),art(x.art),()=>send('media.open',{id:x.id}),x.progress))))}
+ if(!play){const rec=(s.home||[]).filter(o=>o.k==='app'&&o.package!==fg).slice(0,8);$('#tvRecentW').hidden=!rec.length;
+  once('rec'+fg,JSON.stringify(rec),()=>$('#tvRecent').replaceChildren(...rec.map(o=>{const b=el('button','btn'),ic=el('span','ic');b.type='button';fillIcon(ic,o.package,o.name);b.append(ic,el('span','',o.name));b.onclick=()=>send('app.launch',{package:o.package});return b})))}}
+$('#moreApps').onclick=()=>{showAll=!showAll;$('#allGrid').hidden=!showAll;$('#moreApps').setAttribute('aria-expanded',String(showAll))};
+$('#tvNoteX').onclick=()=>{localStorage.setItem('ray_noaccess','1');$('#tvNote').hidden=true};
+$('#tvKbd').onclick=()=>{$('#tvQuery').focus();$('#tvQuery').scrollIntoView({block:'center'})};
+$('#tvSearch').onsubmit=e=>{e.preventDefault();const q=$('#tvQuery').value.trim();if(q)send('media.search',{query:q})};
+$$('[data-mc]').forEach(b=>b.onclick=()=>{const a=b.dataset.mc;if(a==='back')send('media.control',{action:'seek',ms:-10000});else if(a==='forward')send('media.control',{action:'seek',ms:10000});else send('media.control',{action:a})});
+const seekBar=$('#tvSeek');seekBar.oninput=()=>{seeking=true;if(nowState?.duration)$('#tvPos').textContent=fmt(seekBar.value/1000*nowState.duration)};
+seekBar.onchange=()=>{seeking=false;if(nowState?.duration){const ms=Math.round(seekBar.value/1000*nowState.duration);nowState.position=ms;nowAt=Date.now();send('media.control',{action:'seekTo',ms})}};
+
+/* settings state */
+function paintWx(s){lastWx=s;const on=!!s.weatherConsent;$('#wxForm').hidden=!on;$('#wxConsent').hidden=on||!wxAsk;$('#wxEnable').hidden=on||wxAsk;const c=$('#wxCity'),p=$('#wxProv'),w=s.weather;if(document.activeElement!==c&&s.weatherCity!==undefined)c.value=s.weatherCity;if(document.activeElement!==p&&s.weatherProvider)p.value=s.weatherProvider;$('#wxKeyL').hidden=$('#wxKey').hidden=p.value==='openmeteo';if(!wxBusy&&w&&!$('#wxMsg').textContent)$('#wxMsg').textContent=w.city+', '+w.temp+'°'}
+function paintDbg(s){const d=s.debug;if(!d)return;$('#dbg').hidden=false;lastState=s;const b=$('#dbgPanel');b.textContent=tr('TV panel: ','Pannello sulla TV: ')+(d.on?tr('on','sì'):tr('off','no'));b.dataset.on=d.on?'1':'';$('#dbgInfo').textContent='Android '+d.sdk+', heap '+d.heapMb+'/'+d.heapMaxMb+' MB, MCP '+(d.mcp?tr('on','attivo'):tr('off','spento'))+', '+tr('last key ','ultimo tasto ')+d.lastKey;$('#dbgLog').textContent=(d.log||[]).slice().reverse().join('\n')}
+function paintVpn(v){const sel=$('#vpnApp'),apps=v.apps||[],sig=JSON.stringify(apps);if(sel.dataset.sig!==sig){sel.dataset.sig=sig;sel.replaceChildren(...apps.map(x=>{const o=document.createElement('option');o.value=x.pkg;o.textContent=x.name;return o}))}if(document.activeElement!==sel&&v.preferred)sel.value=v.preferred;$('#vpnOpen').disabled=!apps.length;sel.hidden=$('#vpnAppL').hidden=!apps.length;$('#vpnStatus').textContent=(!v.known?tr('VPN status unavailable','Stato VPN non disponibile'):v.active?tr('TV uses VPN','La TV usa la VPN'):tr('TV is not using VPN','La TV non usa la VPN'))+(apps.length?'':tr(', no VPN app installed',', nessuna app VPN installata'))}
+function paint(s={}){
+ paintTv(s);paintDbg(s);paintWx(s);
+ $('#tvName').textContent=((s.manufacturer||'')+' '+(s.device||'')).trim()||tr('TV','TV');$('#tvBtn').setAttribute('aria-label',tr('Change TV: ','Cambia TV: ')+$('#tvName').textContent);
+ if(s.version)$('#ver').textContent=s.version;
+ if(s.filter){const l=$('#light');l.value=s.filter.bright||100;$('#lightValue').textContent=l.value+'%'}
+ if(s.audio){audioState=s.audio;const vol=s.audio.volume;if(vol&&typeof vol==='object'){const level=Number(vol.level);$('#volumeValue').textContent=Number.isFinite(level)?level:'—'}else if(Number.isFinite(vol)){audioState={...s.audio,volume:{level:vol,min:0,max:100}};$('#volumeValue').textContent=vol}}
+ if(s.vpn)paintVpn(s.vpn);
+ const dn=$('#dayNight');if(document.activeElement!==dn&&s.theme&&s.theme.daynight)dn.value=s.theme.daynight;
+ $('#lookSet').disabled=!(s.capabilities?.theme??!!s.theme);
+ if(s.theme){fillSkins(s.theme);if(document.activeElement!==$('#themeSkin'))$('#themeSkin').value=s.theme.skin||'cinema';if(document.activeElement!==$('#remoteSkin'))$('#remoteSkin').value=s.theme.remoteSkin||'match';const r=remoteSkinOf(s.theme),root=document.documentElement.classList;root.toggle('cube',r==='cinema');root.toggle('day',s.theme.isDay===true)}
+ $('#music').setAttribute('aria-checked',String(!!s.music));
+ const mediaSupported=s.capabilities?.media??s.mediaSupported??s.globalInput;$$('[data-media]').forEach(b=>b.disabled=!mediaSupported)}
+
+/* controls */
+$('#dbgPanel').onclick=e=>send('debug.set',{on:!e.target.dataset.on});
+$('#dbgCopy').textContent=tr('Copy state','Copia stato');
+$('#dbgCopy').onclick=()=>{const t=JSON.stringify(lastState,null,1);(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>$('#dbgCopy').textContent=tr('Copied','Copiato'),()=>{$('#dbgLog').textContent=t})};
+{const wp=$('#wxProv'),t=(id,en,i)=>$(id).textContent=tr(en,i);
+ t('#wxCityL','City','Città');t('#wxKeyL','API key (empty keeps the saved one)','Chiave API (vuota = tieni quella salvata)');wp.options[0].text=tr('Open-Meteo (no key)','Open-Meteo (senza chiave)');t('#wxSave','Save','Salva');
+ t('#wxEnable','Turn on weather','Attiva il meteo');t('#wxYes','Accept','Accetta');t('#wxNo','Cancel','Annulla');t('#wxOff','Turn off weather','Disattiva il meteo');
+ t('#wxConsentT','For the weather the TV contacts the chosen service (Open-Meteo, servers in the EU; or OpenWeatherMap) and sends the city name and its coordinates; the service sees the TV’s IP address. Nothing else is sent.','Per il meteo la TV contatta il servizio scelto (Open-Meteo, server in UE; oppure OpenWeatherMap) inviando il nome della città e le sue coordinate; il servizio vede l’indirizzo IP della TV. Nessun altro dato viene inviato.');
+ wp.onchange=()=>{$('#wxKeyL').hidden=$('#wxKey').hidden=wp.value==='openmeteo'};
+ $('#wxSave').onclick=()=>{const k=$('#wxKey');wxBusy=true;$('#wxSave').disabled=true;$('#wxMsg').textContent='…';send('weather.set',{city:$('#wxCity').value.trim(),provider:wp.value,key:k.value});wxId=String(seq);k.value=''};
+ $('#wxEnable').onclick=()=>{wxAsk=true;paintWx(lastWx)};$('#wxNo').onclick=()=>{wxAsk=false;paintWx(lastWx)};$('#wxYes').onclick=()=>{wxAsk=false;send('weather.consent',{accepted:true})};$('#wxOff').onclick=()=>send('weather.consent',{accepted:false})}
+$$('[data-c]').forEach(b=>b.onclick=()=>send('remote.key',{key:'DPAD_'+b.dataset.c.toUpperCase()}));
+$('[data-c=ok]').onclick=()=>send('remote.key',{key:'OK'});
+$$('[data-action=back]').forEach(b=>b.onclick=()=>send('remote.key',{key:'BACK'}));
+$$('[data-action=home]').forEach(b=>b.onclick=()=>send('launcher.home'));
+$('#remote [data-action=menu]').onclick=()=>send('remote.key',{key:'MENU'});
+$$('[data-media]').forEach(b=>b.onclick=()=>send('remote.key',{key:b.dataset.media}));
+$$('[data-volume]').forEach(b=>b.onclick=()=>{const v=audioState?.volume;if(!v||typeof v!=='object')return;const next=Math.max(Number(v.min)||0,Math.min(Number(v.max)||100,(Number(v.level)||0)+Number(b.dataset.volume)));send('audio.set',{volume:next});v.level=next;$('#volumeValue').textContent=next});
+$$('[data-scene]').forEach(b=>b.onclick=()=>send('scene.apply',{scene:b.dataset.scene}));
+{const light=$('#light');let t;light.oninput=()=>{$('#lightValue').textContent=light.value+'%';clearTimeout(t);t=setTimeout(()=>send('filter.set',{bright:+light.value}),50)}}
+$('#music').onclick=e=>send('music.set',{on:e.currentTarget.getAttribute('aria-checked')!=='true'});
+$('#vpnOpen').textContent=tr('Open VPN app','Apri app VPN');$('#vpnSettings').textContent=tr('VPN settings','Impostazioni VPN');$('#vpnAppL').textContent=tr('VPN app','App VPN');
+$('#vpnOpen').onclick=()=>send('vpn.open',{pkg:$('#vpnApp').value});$('#vpnSettings').onclick=()=>send('vpn.open',{pkg:''});
+{const dn=$('#dayNight');dn.onchange=()=>send('theme.set',{daynight:dn.value});[tr('Automatic','Automatico'),tr('Day','Giorno'),tr('Night','Notte')].forEach((x,i)=>dn.options[i].text=x)}
+$('#themeSkin').onchange=e=>send('theme.set',{skin:e.target.value});$('#remoteSkin').onchange=e=>send('theme.set',{remoteSkin:e.target.value});
+{const sb=$('#skinInstall'),sf=$('#skinFile'),lb=tr('Install skin (.zip)','Installa skin (.zip)');sb.textContent=lb;sb.onclick=()=>sf.click();
+ sf.onchange=async()=>{const f=sf.files[0];sf.value='';if(!f)return;sb.textContent='…';try{const r=await fetch('/api/skin',{method:'POST',headers:{'X-Key':key},body:f}),j=await r.json();sb.textContent=r.ok?tr('Installed: ','Installata: ')+j.id:tr('Error: ','Errore: ')+(j.error||r.status)}catch(e){sb.textContent=tr('Network error','Errore di rete')}setTimeout(()=>{sb.textContent=lb},4000)}}
+{const wu=$('#wpUpload'),wr=$('#wpReset'),wf=$('#wpFile'),wm=$('#wpMsg');wu.textContent=tr('Choose image…','Scegli immagine…');wr.textContent=tr('Restore','Ripristina');
+ const call=async(url,body,ok)=>{wm.textContent='…';wu.disabled=wr.disabled=true;try{const r=await fetch(url,{method:'POST',headers:{'X-Key':key},body}),j=await r.json().catch(()=>({}));wm.textContent=r.ok?ok:tr('Error: ','Errore: ')+(j.error||r.status)}catch(e){wm.textContent=tr('Network error','Errore di rete')}wu.disabled=wr.disabled=false;setTimeout(()=>{wm.textContent=''},5000)};
+ wu.onclick=()=>wf.click();
+ wf.onchange=()=>{const f=wf.files[0];wf.value='';if(!f)return;if(f.size>15<<20){wm.textContent=tr('Image too large (max 15 MB)','Immagine troppo grande (max 15 MB)');return}call('/api/wallpaper',f,tr('Wallpaper updated','Sfondo aggiornato'))};
+ wr.onclick=()=>call('/api/wallpaper?reset=1',null,tr('Default wallpaper restored','Sfondo predefinito ripristinato'))}
+addEventListener('keydown',e=>{if(e.target.matches('input,select,textarea,[contenteditable="true"]'))return;const k={ArrowUp:'DPAD_UP',ArrowDown:'DPAD_DOWN',ArrowLeft:'DPAD_LEFT',ArrowRight:'DPAD_RIGHT',Enter:'OK',Escape:'BACK',Backspace:'BACK',Home:'HOME'}[e.key];if(k&&$('#remote').classList.contains('active')){e.preventDefault();send(k==='HOME'?'launcher.home':'remote.key',{key:k})}});
+
+/* connection state: the dot on the TV button, the dimmed tabs and the "TV not found" card all follow the status line */
+status.textContent=L.connecting;
+{const off=$('#offline'),retry=$('#retry');$('#offTitle').textContent=tr('TV not found','TV non trovata');$('#offSub').textContent=tr('Make sure the phone and the TV are on the same Wi-Fi network.','Controlla che il telefono e la TV siano sulla stessa rete Wi-Fi.');retry.textContent=tr('Retry','Riprova');
+ const setConn=()=>{const t=status.textContent,c=t===L.connected?'ok':(t===L.auth||t===L.connecting)?'wait':t===L.failed?(document.body.dataset.conn||'ok'):'down';document.body.dataset.conn=c;off.hidden=c!=='down'};
+ new MutationObserver(setConn).observe(status,{childList:true,characterData:true,subtree:true});setConn();
+ retry.onclick=()=>{clearTimeout(timer);tries=0;status.textContent=L.connecting;connect()};
+ document.addEventListener('pointerdown',e=>{if(navigator.vibrate&&e.target.closest('button:not(:disabled)'))navigator.vibrate(8)})}
+connect();
+/* RAY app, #local=key of this phone: the connect screen. Saved TVs and TVs found on the network; a TV is paired with the code it shows. */
+  if(!key&&nativeMotion){const h=new URLSearchParams(location.hash.slice(1)),loc=h.get('local')||'',rej=h.get('rejected')||'',q=x=>document.querySelector(x),title=q('#cTitle'),sub=q('#cSub'),err=q('#cErr'),cd=q('#cDown'),list=q('#cList'),form=q('#cPin'),pins=[...form.querySelectorAll('input')],H={headers:{'X-Key':loc}},get=u=>fetch(u,H).then(r=>r.json()),api=(op,o)=>fetch('/api/devices',{method:'POST',headers:H.headers,body:JSON.stringify({op,...o})}).then(r=>r.json()),nm=d=>d.name||d.host,go=x=>location.href='raylauncher-app://'+x,nf=tr('TV not found','TV non trovata');
+   let gone=h.get('down')||'',saved=[],found=[],pick=null,up=false,busy=false,last='';
+   document.body.classList.add('connect');q('#connect').hidden=false;
+   const head=()=>{const d=saved.find(x=>x.id===(gone||rej));cd.hidden=!(gone&&d&&!pick&&!up);
+    if(pick){title.textContent=nm(pick);sub.textContent=tr('Enter the code shown on the TV.','Inserisci il codice mostrato sulla TV.')}
+    else if(gone&&d&&!up){title.textContent=nm(d)+tr(' is not reachable',' non è raggiungibile');sub.textContent=tr('Check that it is on and on the same Wi-Fi. This page keeps looking.','Controlla che sia accesa e sulla stessa rete Wi-Fi. Continuo a cercarla.')}
+    else if(rej&&d){title.textContent=nm(d)+tr(' needs a new code',' richiede un nuovo codice');sub.textContent=tr('Tap it and enter the code shown on the TV.','Toccala e inserisci il codice mostrato sulla TV.')}
+    else{title.textContent=tr('Connect your TV','Collega la tua TV');sub.textContent=tr('Open RAY on the TV, on the same Wi-Fi. It shows up here.','Apri RAY sulla TV, sulla stessa rete Wi-Fi. Comparirà qui.')}};
+   const draw=()=>{head();const rows=[...saved.map(d=>[d,1]),...found.map(d=>[d,0])];
+    list.replaceChildren(...(rows.length?rows.map(([d,s])=>{const b=document.createElement('button'),n=document.createElement('span'),t=document.createElement('small');b.type='button';n.textContent=nm(d);
+     t.textContent=!s?'':d.id===rej?tr('Needs a new code','Serve un nuovo codice'):d.id===gone?(up?tr('Back online · tap to open','Di nuovo online · tocca per aprire'):tr('Not reachable','Non raggiungibile')):tr('Saved','Salvato');
+     b.classList.toggle('down',d.id===gone&&!up);b.append(n,t);b.onclick=()=>s&&d.id!==rej?go('open/'+d.id):start(d);return b}):[Object.assign(document.createElement('p'),{textContent:tr('Looking for TVs with RAY…','Ricerca TV con RAY…')})]))};
+   const paint=()=>{const sg=JSON.stringify([saved,found,up,gone]);if(sg!==last&&!pick){last=sg;draw()}};
+   const show=d=>{pick=d;last='';list.hidden=!!d;form.hidden=!d;q('#cFoot').hidden=!!d;err.textContent='';if(d){head();pins.forEach(x=>x.value='');pins[0].focus()}else paint()};
+   const start=d=>api('pairstart',{host:d.host,port:d.port}).then(r=>{if(!r.ok){err.textContent=r.error==='wait'?tr('Wait a few seconds and try again.','Attendi qualche secondo e riprova.'):nf;return}show(d);if(!r.shown)err.textContent=tr('The TV cannot show the code. Scan the QR on the TV instead.','La TV non può mostrare il codice. Scansiona invece il QR sulla TV.')}).catch(()=>{err.textContent=nf});
+   const submit=()=>{const pin=pins.map(x=>x.value).join('');if(pin.length<4||busy)return;busy=true;
+    api('pair',{host:pick.host,port:pick.port,pin,did:pick.did||pick.id,name:pick.name||''}).then(r=>{busy=false;if(r.ok)return go('open/'+r.id);pins.forEach(x=>x.value='');
+     if(r.error==='pin'){err.textContent=tr('Wrong code. Try again.','Codice errato. Riprova.');pins[0].focus();return}
+     show(null);err.textContent=r.error==='locked'?tr('Too many tries. Choose the TV again.','Troppi tentativi. Scegli di nuovo la TV.'):r.error==='closed'?tr('The code expired. Choose the TV again.','Il codice è scaduto. Scegli di nuovo la TV.'):nf}).catch(()=>{busy=false;show(null);err.textContent=nf})};
+   pins.forEach((el,i)=>{el.oninput=()=>{el.value=el.value.replace(/\D/g,'').slice(-1);if(el.value&&pins[i+1])pins[i+1].focus();submit()};el.onkeydown=e=>{if(e.key==='Backspace'&&!el.value&&pins[i-1])pins[i-1].focus()};
+    el.onpaste=e=>{const t=(e.clipboardData.getData('text')||'').replace(/\D/g,'').slice(0,4);if(!t)return;e.preventDefault();pins.forEach((x,j)=>x.value=t[j]||'');submit()}});
+   q('#cRetry').textContent=tr('Retry','Riprova');q('#cOther').textContent=tr('Other TV','Altra TV');q('#cBack').textContent=tr('Back','Indietro');q('#cScan').textContent=tr('Scan QR','Scansiona QR');q('#cMgr').textContent=tr('Local filter','Filtro locale');
+   q('#cRetry').onclick=()=>go('open/'+gone);q('#cOther').onclick=()=>{gone='';last='';paint()};q('#cBack').onclick=()=>show(null);q('#cScan').onclick=()=>go('scan');form.onsubmit=e=>e.preventDefault();
+   window.RayBack=()=>{if(!pick)return false;show(null);return true};
+   const poll=()=>Promise.all([get('/api/devices'),get('/api/discovered')]).then(([s,f])=>{saved=s;found=f;paint();return gone?fetch('/d/'+encodeURIComponent(gone)+'/api/info',H).then(r=>r.ok,()=>false):false}).then(u=>{up=u;paint()}).catch(()=>{}).finally(()=>setTimeout(poll,2500));poll()}
+})();
 </script></html>

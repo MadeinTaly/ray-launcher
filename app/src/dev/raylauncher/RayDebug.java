@@ -18,22 +18,30 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 /**
- * Developer aid: a ring of the last events (remote and MCP commands, keys, launches) readable from the phone and
- * over MCP, and an optional panel on the TV home with frame rate, memory, focus, last key, connections and the log.
- * Pref "ray_debug". Nothing is written to disk and nothing leaves the local network.
+ * Debug channel of dev builds only (DEV=1 ./build.sh makes the APK debuggable): a ring of the last events and a JSON
+ * snapshot of the app, read with `adb shell dumpsys activity service dev.raylauncher/.DimService debug`, plus an
+ * optional panel on the TV home (pref "ray_debug"). Closed in release builds: nothing is recorded, nothing answers,
+ * no setting shows it. Never holds the pairing key or a PIN. Nothing is written to disk.
  */
 final class RayDebug {
     static final String PREF = "ray_debug";
-    private static final int KEEP = 40;
+    private static final int KEEP = 100;
     private static final java.util.ArrayDeque<String> LOG = new java.util.ArrayDeque<>();
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static volatile String lastKey = "-";
     private static Panel panel;
+    /** Set by init: true only in a debuggable build. */
+    static volatile boolean open;
 
     private RayDebug() {
     }
 
+    static void init(Context c) {
+        open = (c.getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+    }
+
     static void log(String event) {
+        if (!open) return;
         String line = new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.ROOT).format(new java.util.Date()) + "  " + event;
         synchronized (LOG) {
             LOG.addLast(line.length() > 140 ? line.substring(0, 140) + "…" : line);
@@ -46,13 +54,55 @@ final class RayDebug {
     }
 
     static void key(KeyEvent e) {
-        if (e.getAction() != KeyEvent.ACTION_DOWN || e.getRepeatCount() > 0) return;
+        if (!open || e.getAction() != KeyEvent.ACTION_DOWN || e.getRepeatCount() > 0) return;
         lastKey = KeyEvent.keyCodeToString(e.getKeyCode()).replace("KEYCODE_", "");
         log("key " + lastKey);
     }
 
     static boolean enabled(Context c) {
-        return c.getSharedPreferences(DimService.PREFS, Context.MODE_PRIVATE).getBoolean(PREF, false);
+        return open && c.getSharedPreferences(DimService.PREFS, Context.MODE_PRIVATE).getBoolean(PREF, false);
+    }
+
+    /** The whole snapshot for dumpsys; a section that fails reports its error, the others still come. */
+    static String dump(Context c) {
+        if (!open) return "debug off (release build)";
+        JSONObject o = new JSONObject();
+        for (String section : new String[]{"app", "device", "permissions", "home", "phone", "remote", "settings", "events"}) {
+            try { o.put(section, section(section, c)); }
+            catch (Exception e) { try { o.put(section, "error: " + e); } catch (org.json.JSONException ignored) { } }
+        }
+        try { return o.toString(2); } catch (org.json.JSONException e) { return o.toString(); }
+    }
+
+    private static Object section(String name, Context c) throws Exception {
+        android.content.pm.PackageManager pm = c.getPackageManager();
+        switch (name) {
+            case "app": {
+                android.content.pm.PackageInfo pi = pm.getPackageInfo(c.getPackageName(), 0);
+                Runtime rt = Runtime.getRuntime();
+                return new JSONObject().put("version", pi.versionName).put("code", pi.versionCode)
+                        .put("heapMb", (rt.totalMemory() - rt.freeMemory()) >> 20).put("heapMaxMb", rt.maxMemory() >> 20)
+                        .put("fdroid", Compat.fromFdroid(c)).put("panel", enabled(c)).put("mcp", RayMcp.enabled(c));
+            }
+            case "device":
+                return new JSONObject().put("model", android.os.Build.MODEL).put("sdk", android.os.Build.VERSION.SDK_INT)
+                        .put("tv", Compat.isTv(c)).put("lastKey", lastKey);
+            case "permissions":
+                return new JSONObject().put("overlay", android.provider.Settings.canDrawOverlays(c))
+                        .put("accessibility", DimAccessibilityService.instance != null)
+                        .put("tvListings", c.checkSelfPermission("android.permission.READ_TV_LISTINGS") == android.content.pm.PackageManager.PERMISSION_GRANTED);
+            case "home":
+                return RayLauncherActivity.debugHome();
+            case "phone":
+                return PhoneActivity.debugPhone();
+            case "remote":
+                return new JSONObject().put("ip", String.valueOf(RemoteServer.localIp())).put("port", RemoteServer.PORT)
+                        .put("sockets", RaySocket.clientCount());
+            case "settings":
+                return MainActivity.debugSettings();
+            default:
+                return logJson();
+        }
     }
 
     static JSONObject state(Context c) {
@@ -68,6 +118,7 @@ final class RayDebug {
 
     /** Turns the TV panel on or off, from any thread. */
     static void set(final Context c, boolean on) {
+        if (!open) return;
         c.getSharedPreferences(DimService.PREFS, Context.MODE_PRIVATE).edit().putBoolean(PREF, on).apply();
         log("debug panel " + (on ? "on" : "off"));
         MAIN.post(new Runnable() { @Override public void run() { RayLauncherActivity.debugChanged(); } });

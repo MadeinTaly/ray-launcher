@@ -86,6 +86,7 @@ final class RayGlobalControl {
             }
         }
         if (globalAction(keyCode)) return true;
+        if (RayAdb.key(context, keyCode)) return true; // Full access: works over any app on any Android version
         initialize(context);
         return runRootCommand("keyevent " + linuxCode);
     }

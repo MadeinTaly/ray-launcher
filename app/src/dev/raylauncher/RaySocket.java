@@ -167,7 +167,8 @@ final class RaySocket {
                 || command.equals("launcher.home") || command.equals("app.launch") || command.equals("filter.set")
                 || command.equals("audio.set") || command.equals("scene.apply") || command.equals("theme.set") || command.equals("weather.set")
                 || command.equals("weather.consent") || command.equals("vpn.open") || command.equals("music.set") || command.equals("debug.set")
-                || command.equals("media.control") || command.equals("media.search") || command.equals("media.open");
+                || command.equals("media.control") || command.equals("media.search") || command.equals("media.open")
+                || command.equals("watch.open") || command.equals("url.open");
     }
 
     /** One companion command without a socket (the MCP endpoint): the same checks and results as the phone's. */
@@ -184,7 +185,7 @@ final class RaySocket {
     private JSONObject command(String name, JSONObject request) {
         if (!name.startsWith("remote.") || name.equals("remote.key")) RayDebug.log("cmd " + name + " " + request);
         if (name.equals("debug.set")) {
-            if (!(request.opt("on") instanceof Boolean)) return message("result", "ok", false);
+            if (!RayDebug.open || !(request.opt("on") instanceof Boolean)) return message("result", "ok", false);
             RayDebug.set(service, request.optBoolean("on"));
             return message("result", "ok", true);
         }
@@ -193,6 +194,7 @@ final class RaySocket {
             String key = keyName(request.optString("key", name));
             int code = keyCode(key);
             if (code == 0) return message("result", "ok", false);
+            if (code != 3 && code < 85 && MainActivity.remoteKey(code)) return message("result", "ok", true);
             if (code == 3) name = "launcher.home";
             else if (!RayLauncherActivity.isHomeActive() || code >= 85) {
                 // OK clicks under the air-mouse pointer when it is showing, otherwise it is the D-pad centre
@@ -207,7 +209,11 @@ final class RaySocket {
                     (int) Math.max(-32767, Math.min(32767, request.optDouble("dy", 0))));
             return message("result", "ok", true);
         }
+        if (name.equals("media.search") && RayLauncherActivity.isHomeActive()) // with the home in front a search is the home's search
+            return message("result", "ok", RayLauncherActivity.remoteSearch(request.optString("query")));
         if (name.startsWith("media.")) return media(name, request);
+        if (name.equals("watch.open")) return message("result", "ok", RayHomeFeed.openWatch(service, request.optInt("index", -1), request.optString("title")));
+        if (name.equals("url.open")) return message("result", "ok", openUrl(request.optString("url")));
         if (name.equals("weather.set")) { // network: runs on this reader thread, never on the UI thread
             try { return RayLauncherActivity.command(service, new JSONObject(request.toString()).put("type", "weather.set")); }
             catch (org.json.JSONException e) { return message("result", "ok", false); }
@@ -272,13 +278,30 @@ final class RaySocket {
         return result[0];
     }
 
+    /** A link shared from the phone, opened on the TV by whatever app handles it. Only http and https. */
+    private boolean openUrl(String url) {
+        if (url == null || url.length() > 2048) return false;
+        android.net.Uri uri = android.net.Uri.parse(url.trim());
+        String scheme = uri.getScheme();
+        if (!("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme)) || uri.getHost() == null || uri.getHost().isEmpty()) return false;
+        // from the background Android blocks it silently, so saying "sent" would be a lie
+        if (!RayLauncherActivity.isHomeActive() && !android.provider.Settings.canDrawOverlays(service)) return false;
+        try {
+            service.startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW, uri)
+                    .addCategory(android.content.Intent.CATEGORY_BROWSABLE).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));
+            return true;
+        } catch (RuntimeException noHandler) {
+            return false;
+        }
+    }
+
     /** Companion for the app on screen: transport controls, its search and its recommendations. */
     private JSONObject media(String name, JSONObject request) {
         String pkg = RayMedia.foreground(service);
         boolean ok;
         if (name.equals("media.control")) ok = RayMedia.control(service, pkg, request.optString("action"), request.optLong("ms", 0));
         else if (name.equals("media.search")) ok = RayMedia.search(service, pkg, request.optString("query"));
-        else ok = RayMedia.openSuggestion(service, pkg, request.optInt("index", -1));
+        else ok = RayMedia.openSuggestion(service, pkg, request.optString("id", ""));
         return message("result", "ok", ok);
     }
 
@@ -348,7 +371,10 @@ final class RaySocket {
                     data = RayLauncherActivity.rayState(service);
                     data.put("filter", new JSONObject(service.stateJson()));
                     data.put("audio", new JSONObject(service.audioJson()));
-                    data.put("debug", RayDebug.state(service));
+                    data.put("home", RayHomeFeed.row(service, data.optJSONArray("apps")));
+                    try { data.put("version", service.getPackageManager().getPackageInfo(service.getPackageName(), 0).versionName); }
+                    catch (android.content.pm.PackageManager.NameNotFoundException ignored) { }
+                    if (RayDebug.open) data.put("debug", RayDebug.state(service));
                 } catch (Exception ignored) { data = new JSONObject(); }
                 result[0] = data;
             }

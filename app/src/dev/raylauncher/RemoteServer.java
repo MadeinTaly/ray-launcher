@@ -36,6 +36,8 @@ import java.util.concurrent.Semaphore;
  *   POST /api/audio      {"enabled":bool,"volume":n,"bands":[mB..],"preset":n,"bass":0-1000,"virt":0-1000,"loud":0-1500,"reset":true}, any subset
  *   GET  /api/days       saved days: [{"name":..,"slots":[..]}]
  *   POST /api/days       {"name":..,"slots":[..]} saves or replaces a day; {"name":..,"delete":true} deletes it
+ *   POST /api/pair/start   no key: shows a 4-digit code on the TV for 120 s -> {"ok":true,"shown":bool}; 429 if called within 3 s
+ *   POST /api/pair/finish  {"pin":"1234"}, no key -> {"k":<pairing key>}; else 403 {"error":"pin|closed|locked"}, see docs/PROTOCOL.md
  *   POST /api/skin       a skin package (.zip body, up to 20 MB, docs/SKIN_FORMAT.md): installed under getExternalFilesDir("skins")
  *   POST /api/wallpaper  an image body (jpeg/png/webp, up to 15 MB): the TV wallpaper; ?reset=1 restores the default
  *   GET  /skins/<id>/remote.webp, /skins/<id>/preview.webp   art of a listed skin (no key)
@@ -96,9 +98,21 @@ final class RemoteServer extends Thread {
         }
     }
 
+    /** The previous server (the phone screen closed and opened again) may still hold the port for a moment. */
+    private ServerSocket bind() throws IOException {
+        for (int i = 0; ; i++) {
+            try {
+                return lan ? new ServerSocket(PORT) : new ServerSocket(PORT, 50, InetAddress.getByName("127.0.0.1"));
+            } catch (java.net.BindException e) {
+                if (i >= 25 || isInterrupted()) throw e;
+                try { Thread.sleep(200); } catch (InterruptedException x) { throw e; }
+            }
+        }
+    }
+
     @Override
     public void run() {
-        try (ServerSocket s = lan ? new ServerSocket(PORT) : new ServerSocket(PORT, 50, InetAddress.getByName("127.0.0.1"))) {
+        try (ServerSocket s = bind()) {
             socket = s;
             while (!isInterrupted()) {
                 try {
@@ -207,6 +221,29 @@ final class RemoteServer extends Thread {
             if (!keyMatches(k)) send(out, 403, "text/plain", "pairing key");
             else if (image == null) send(out, 404, "text/plain", "not found");
             else send(out, 200, "image/jpeg", image);
+        } else if (method.equals("GET") && (path.equals("/watch-art") || path.equals("/app-icon") || path.equals("/item-art"))) {
+            // <img> cannot send X-Key either: k= in the query
+            String k = null, i = "", p = "", item = "";
+            for (String pair : query.split("&")) {
+                if (pair.startsWith("k=")) k = java.net.URLDecoder.decode(pair.substring(2), "UTF-8");
+                else if (pair.startsWith("i=")) i = pair.substring(2);
+                else if (pair.startsWith("p=")) p = java.net.URLDecoder.decode(pair.substring(2), "UTF-8");
+                else if (pair.startsWith("id=")) item = java.net.URLDecoder.decode(pair.substring(3), "UTF-8");
+            }
+            byte[] image = null;
+            if (keyMatches(k)) {
+                if (path.equals("/app-icon")) image = RayHomeFeed.icon(service, p);
+                else if (path.equals("/item-art")) image = RayMedia.itemArt(service, item);
+                else try { image = RayHomeFeed.watchArt(Integer.parseInt(i)); } catch (NumberFormatException bad) { }
+            }
+            if (!keyMatches(k)) send(out, 403, "text/plain", "pairing key");
+            else if (image == null) send(out, 404, "text/plain", "not found");
+            else send(out, 200, path.equals("/app-icon") ? "image/png" : "image/jpeg", image);
+        } else if (method.equals("GET") && path.equals("/fonts/ChakraPetch-SemiBold.ttf")) { // the remote's Cinema buttons (SIL OFL), no key: a font
+            byte[] font = null;
+            try { font = assetBytes("fonts/ChakraPetch-SemiBold.ttf"); } catch (IOException missing) { }
+            if (font == null) send(out, 404, "text/plain", "not found");
+            else send(out, 200, "font/ttf", font);
         } else if (method.equals("GET") && path.equals("/ray.apk")) {
             sendApk(out);
         } else if (method.equals("GET") && path.equals("/ray")) {
@@ -236,6 +273,28 @@ final class RemoteServer extends Thread {
             }
         } else if (loopback && method.equals("GET") && APP.containsKey(path)) {
             send(out, 200, APP.get(path), assetBytes(path.substring(1)));
+        } else if (method.equals("POST") && path.equals("/api/proof")) { // no key: proves this is the paired TV, see PinGate.proof
+            String nonce = "";
+            try { nonce = new JSONObject(new String(body, 0, read, StandardCharsets.UTF_8)).optString("n"); } catch (JSONException bad) { }
+            if (!nonce.matches("[0-9a-f]{16,64}")) send(out, 400, "application/json", "{\"error\":\"nonce\"}");
+            else send(out, 200, "application/json", "{\"proof\":\"" + PinGate.proof(service.pairingKey(), nonce, c.getLocalAddress().getHostAddress()) + "\"}");
+        } else if (method.equals("POST") && path.equals("/api/pair/start")) {
+            String pin = DimService.PAIR.start(System.currentTimeMillis());
+            if (pin == null) send(out, 429, "application/json", "{\"error\":\"wait\"}");
+            else send(out, 200, "application/json", "{\"ok\":true,\"shown\":" + pinOsd(pin) + "}");
+        } else if (method.equals("POST") && path.equals("/api/pair/finish")) {
+            String guess;
+            try {
+                guess = new JSONObject(new String(body, 0, read, StandardCharsets.UTF_8)).optString("pin");
+            } catch (JSONException e) {
+                send(out, 400, "application/json", "{\"error\":\"bad json\"}");
+                return;
+            }
+            long now = System.currentTimeMillis();
+            String r = DimService.PAIR.finish(now, c.getInetAddress().getHostAddress(), guess);
+            if (!DimService.PAIR.open(now)) pinOsd(null);
+            if (r.equals("ok")) send(out, 200, "application/json", "{\"k\":" + JSONObject.quote(service.pairingKey()) + "}");
+            else send(out, 403, "application/json", "{\"error\":\"" + r + "\"}");
         } else if (loopback && path.startsWith("/d/")) {
             if (!keyMatches(key)) send(out, 403, "application/json", "{\"error\":\"pairing key\"}");
             else AppApi.forward(prefs(), path, method, body, read, out);
@@ -314,6 +373,22 @@ final class RemoteServer extends Thread {
         } else {
             send(out, 404, "text/plain", "not found");
         }
+    }
+
+    /** The pairing code on the TV screen (null hides it); the overlay belongs to the main thread. */
+    private boolean pinOsd(final String pin) {
+        final Runnable popup = DimService.pairListener; // the home screen shows its own popup while it is in front
+        if (popup != null) main.post(popup);
+        if (popup != null && pin != null) return true;
+        final boolean[] shown = new boolean[1];
+        final java.util.concurrent.CountDownLatch done = new java.util.concurrent.CountDownLatch(1);
+        main.post(new Runnable() {
+            @Override public void run() {
+                try { shown[0] = service.pinOsd(pin); } finally { done.countDown(); }
+            }
+        });
+        try { done.await(2, java.util.concurrent.TimeUnit.SECONDS); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+        return shown[0];
     }
 
     /** MCP over Streamable HTTP: POST one JSON-RPC message, the answer comes back as JSON (RayMcp). */

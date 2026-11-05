@@ -1,12 +1,14 @@
 RAY is a lightweight, open-source launcher for Android TV, with a companion app for your phone.
 
 <b>Launcher</b>
-* Home screen with your installed apps (banners, names, icons), a full app catalog and, if you allow it, the "Watch Next" entries of your TV apps
-* <b>Skins</b>: the whole look of the home is a skin. Several are bundled, each with a day and a night look that switch automatically at sunrise and sunset. Make your own: the skin format is documented and open
+* Continue watching on top (the "Watch Next" entries of your TV apps, if you allow it), your apps below, and All apps, a grid of everything installed. Works fully with the D-pad remote alone
+* <b>Themes</b>: Horizon, Magazine and Lacquer, each with a day and a night variant that switch automatically at sunrise and sunset. Horizon has an animated background (sun by day, moon by night) on devices that can take it, with an Automatic / On / Off setting. Make your own themes: the format is documented and open
+* One search: type or speak a title, then search inside every app that accepts it
+* Optional background music, off by default (a switch in Settings)
 
-<b>Phone remote</b>
-* Pair by scanning the QR code on the TV, or use the browser: no account needed
-* D-pad, search, app launcher, media controls for the app on screen, wallpaper and skin selection
+<b>Phone remote (optional)</b>
+* Nothing on the TV asks for a phone. Pair with a QR code or a 4-digit code, or use the browser: no account needed
+* Tabs Remote, On TV (playback controls, continue watching and suggestions of the app on screen) and Settings; share a link from any app to open it on the TV
 * <b>Air mouse</b>: steer a pointer on the TV with the motion of your phone (opt-in), also over other apps
 * Finds your TVs on the network and can copy settings to several of them
 
@@ -19,5 +21,7 @@ RAY is a lightweight, open-source launcher for Android TV, with a companion app 
 * No accounts, no trackers, no ads, no third-party SDKs
 * The network is used only on your local network (port 8766, protected by a pairing key)
 * Optional weather on the home screen: off until you give your consent; then only the city and its coordinates are sent to Open-Meteo (EU) or OpenWeatherMap (your own key)
+
+* Full access (optional, Settings > Home): on devices whose own ADB is open, RAY uses it to grant itself permissions and read the lists apps publish
 
 Android 8.0 or later. Every extra permission (overlay, accessibility, usage access, notification access, Watch Next) is optional and only unlocks the feature it is for. Source code and skin format: github.com/MadeinTaly/ray-launcher

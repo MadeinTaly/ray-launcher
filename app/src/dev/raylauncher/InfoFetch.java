@@ -9,7 +9,7 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
-/** Asks a newly added device for its name (GET /api/info) off the main thread, then reports back on it. */
+/** Asks a newly added device for its name and network id (GET /api/info) off the main thread, then reports back on it. */
 final class InfoFetch implements Runnable {
     private final PhoneActivity activity;
     private final Handler main;
@@ -17,6 +17,7 @@ final class InfoFetch implements Runnable {
     private final int port;
     private final String key;
     private String name;
+    private String id;
 
     InfoFetch(PhoneActivity activity, Handler main, String host, int port, String key) {
         this.activity = activity;
@@ -29,7 +30,7 @@ final class InfoFetch implements Runnable {
     @Override
     public void run() {
         if (name != null) { // second pass, on the main thread
-            activity.deviceNamed(host, port, name);
+            activity.deviceNamed(host, port, name, id);
             return;
         }
         try {
@@ -42,11 +43,13 @@ final class InfoFetch implements Runnable {
                 byte[] buf = new byte[1024];
                 int n;
                 while ((n = in.read(buf)) > 0) b.write(buf, 0, n);
-                name = new JSONObject(b.toString("UTF-8")).optString("name");
+                JSONObject info = new JSONObject(b.toString("UTF-8"));
+                name = info.optString("name");
+                id = info.optString("id");
             }
         } catch (Exception e) {
             return;
         }
-        if (!name.isEmpty()) main.post(this);
+        main.post(this);
     }
 }

@@ -10,9 +10,9 @@ sj = json.load(open(os.path.join(d, 'skin.json'), encoding='utf-8'))
 sid = sj.get('id')
 if sj.get('format') != 1 or sid != os.path.basename(d) or not re.fullmatch(r'[a-z0-9_-]{1,32}', sid or ''):
     sys.exit('skin.json: format must be 1 and id must equal the folder name (a-z0-9_-)')
-if sj.get('frame') and not os.path.isfile(os.path.join(d, sj['frame'])):
-    sys.exit('frame file missing: ' + sj['frame'])
-ok = re.compile(r'skin\.json|frame\.(webp|png)|remote\.webp|preview\.webp|icons/[a-z]{1,16}\.png')
+if sj.get('frame'):
+    sys.exit('framed skins are not supported: "frame" must be null or absent')
+ok = re.compile(r'skin\.json|wallpaper(-day|-night)?\.webp|remote(-day|-night)?\.webp|preview\.webp|icons(-day|-night)?/[a-z]{1,16}\.png')
 out = sys.argv[2] if len(sys.argv) > 2 else sid + '.zip'
 n = total = 0
 with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as z:

@@ -118,7 +118,7 @@ final class RayWallpaper {
     static Bitmap stockScene(Context c, RaySkin skin) {
         Bitmap scene = null;
         try {
-            scene = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888);
+            scene = Bitmap.createBitmap(W, H, RayGraphics.capable(c) ? Bitmap.Config.ARGB_8888 : Bitmap.Config.RGB_565); // a small box: half the memory, a little banding
         } catch (OutOfMemoryError e) { return null; }
         Canvas canvas = new Canvas(scene);
         Bitmap wp = cover(c, W, H, Bitmap.Config.ARGB_8888);

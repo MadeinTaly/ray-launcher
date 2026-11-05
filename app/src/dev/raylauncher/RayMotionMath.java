@@ -29,6 +29,9 @@ final class RayMotionMath {
 
         void reset() { lastNs = 0; haveAngles = false; dx = dy = 0; }
 
+        /** For the debug channel: where this integrator thinks "up" is, device axes. */
+        float[] up() { return haveUp ? new float[]{ux, uy, uz} : null; }
+
         /** Accelerometer at rest reads +g along "up"; heavy low-pass so hand shake does not tilt the yaw axis. */
         void gravity(float ax, float ay, float az) {
             float n = (float) Math.sqrt(ax * ax + ay * ay + az * az);
@@ -39,11 +42,12 @@ final class RayMotionMath {
         }
 
         /**
-         * TYPE_GYROSCOPE event (rad/s, device axes: x right, y up the screen, z out of the screen). The phone is held
-         * pointing at the TV. Yaw is the rotation about the world vertical = the gyro vector projected on "up"
-         * (equals wz when the phone lies flat, wy when held upright). Turning left is +yaw (right-hand rule) and
-         * must move the pointer left: dx = -yaw*dt. Pitching the top edge up is +wx and must move it up
-         * (screen y grows downward): dy = -wx*dt.
+         * TYPE_GYROSCOPE event (rad/s, device axes: x right, y up the screen, z out of the screen). Both pointer axes
+         * are world axes, so any roll of the hand (flat, upright, on its side like a Wii remote) moves the same way.
+         * Yaw is the rotation about "up": turning left is +yaw and must move the pointer left, dx = -yaw*dt.
+         * Pitch is the rotation about "right" = forward x up: raising the nose is +pitch and must move it up (screen
+         * y grows downward), dy = -pitch*dt. Forward is the top edge (y) levelled; when the top edge points at the
+         * ceiling it says nothing, so there the back of the phone (-z) takes over.
          */
         boolean gyro(float wx, float wy, float wz, long ns, int sensitivity) {
             dx = dy = 0;
@@ -52,8 +56,18 @@ final class RayMotionMath {
             if (prev == 0 || !finite(wx) || !finite(wy) || !finite(wz)) return false;
             float dt = (ns - prev) / 1e9f;
             if (dt <= 0 || dt > .05f) return false; // first event after a pause: no jump
-            float yaw = haveUp ? wx * ux + wy * uy + wz * uz : wz;
-            return emit(-yaw, -wx, dt, sensitivity);
+            if (!haveUp) return emit(-wz, -wx, dt, sensitivity);
+            float yaw = wx * ux + wy * uy + wz * uz;
+            // forward = a * (y levelled) + (1 - a) * (-z levelled); a = 1 up to 45 degrees of top edge lift, 0 from 70
+            float a = Math.max(0, Math.min(1, (.94f - Math.abs(uy)) / .23f));
+            float fx = -a * uy * ux + (1 - a) * uz * ux;
+            float fy = a * (1 - uy * uy) + (1 - a) * uz * uy;
+            float fz = -a * uy * uz + (1 - a) * (uz * uz - 1);
+            float n = (float) Math.sqrt(fx * fx + fy * fy + fz * fz);
+            if (n < .01f) return emit(-yaw, -wx, dt, sensitivity); // ponytail: exact singular pose, x stays the pitch axis
+            fx /= n; fy /= n; fz /= n;
+            float rx = fy * uz - fz * uy, ry = fz * ux - fx * uz, rz = fx * uy - fy * ux;
+            return emit(-yaw, -(wx * rx + wy * ry + wz * rz), dt, sensitivity);
         }
 
         /** Fallback without gyroscope: successive GAME_ROTATION_VECTOR yaw/pitch (SensorManager.getOrientation). */

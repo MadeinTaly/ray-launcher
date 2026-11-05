@@ -1,0 +1,63 @@
+{
+  "format": 1,
+  "id": "rivista",
+  "name": {
+    "it": "Rivista",
+    "en": "Magazine",
+    "de": "Magazin",
+    "fr": "Magazine",
+    "es": "Revista"
+  },
+  "author": "RAY",
+  "accent": "#E8452C",
+  "wallpaperDefault": {
+    "gradient": [
+      "#121110",
+      "#121110"
+    ],
+    "stops": [
+      0,
+      1
+    ],
+    "angle": 180
+  },
+  "style": {
+    "layout": "rivista",
+    "surface": "#121110",
+    "text": "#F3EEE4",
+    "muted": "#A9A297",
+    "ring": "#E8452C",
+    "cardRadius": 2,
+    "focusScale": 1.12,
+    "dim": 0.86,
+    "ringDp": 3,
+    "shadow": "#99000000",
+    "panelFill": "#1AF3EEE4",
+    "panelStrong": "#33F3EEE4",
+    "ok": "#7FC7A0",
+    "btnBg": "#E8452C",
+    "btnFg": "#FFFFFF",
+    "btn2Bg": "#1FF3EEE4",
+    "btn2Fg": "#F3EEE4"
+  },
+  "variants": {
+    "night": {},
+    "day": {
+      "accent": "#C62F18",
+      "style": {
+        "surface": "#F3EEE4",
+        "text": "#161412",
+        "muted": "#5F5A52",
+        "ring": "#C62F18",
+        "dim": 0.95,
+        "shadow": "#40332B20",
+        "panelFill": "#14161412",
+        "panelStrong": "#29161412",
+        "ok": "#2E7D5B",
+        "btnBg": "#C62F18",
+        "btn2Bg": "#14161412",
+        "btn2Fg": "#161412"
+      }
+    }
+  }
+}

@@ -1,0 +1,9 @@
+* New home: continue watching on top, apps below, All apps opens a full grid. A phone is optional: nothing asks for one
+* Three looks: Horizon with an animated 3D background (sun by day, moon by night, only where the device can take it), Magazine, Lacquer
+* New settings screen on the TV, new phone app: Remote, On TV with playback controls and per-app continue watching and suggestions, Settings
+* Pairing with a 4-digit code, reconnects by itself when the TV changes address
+* Air mouse works however you hold the phone; with Motion on the volume keys select and recenter
+* New icon
+* One search: type or say a title (where the device has speech), then search inside every app that accepts it
+* Full access (optional, one press, on devices with open ADB): continue watching and suggestions of every app, what is playing, the phone working over apps
+* Faster start and less memory on small boxes; animated background only where the device can take it

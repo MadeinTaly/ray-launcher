@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="dev.raylauncher"
-    android:versionCode="33"
-    android:versionName="0.4.0-beta.1">
+    android:versionCode="34"
+    android:versionName="0.5.0-beta.1">
 
     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35" />
 
@@ -18,7 +18,11 @@
     <!-- Local-network remote server, the optional weather lookup (only after consent), and the update check against GitHub releases. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Installing the update downloaded from GitHub (Android still asks for confirmation). -->
+    <!-- Air mouse: the gyroscope at its full rate; without this Android 12+ refuses it. -->
+    <uses-permission android:name="android.permission.HIGH_SAMPLING_RATE_SENSORS" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- The "Uninstall" entry of an app card: Android asks for confirmation. -->
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
     <!-- Finding the TVs on the local network (mDNS) from the phone app, like the WLED app does. -->
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
     <!-- Optional, only if granted with adb (pm grant): lets the Enable button turn on the accessibility service
@@ -45,12 +49,13 @@
         android:allowBackup="false"
         android:usesCleartextTraffic="true">
 
-        <activity android:name="dev.raylauncher.MainActivity" android:exported="true" />
+        <activity android:name="dev.raylauncher.MainActivity" android:exported="true"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
 
         <activity android:name="dev.raylauncher.RayLauncherActivity" android:exported="true"
             android:launchMode="singleTask"
             android:taskAffinity="dev.raylauncher"
-            android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+            android:theme="@style/RayHome">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
@@ -70,6 +75,7 @@
         <!-- Phone/tablet screen: the remote page in a WebView. Also opens TV pairing links (the TV's QR code). -->
         <activity
             android:name="dev.raylauncher.PhoneActivity"
+            android:screenOrientation="portrait"
             android:exported="true"
             android:launchMode="singleTask"
             android:taskAffinity="dev.raylauncher.companion"
@@ -86,6 +92,12 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="http" android:host="*" android:port="8766" />
+            </intent-filter>
+            <!-- a link shared from any app opens on the TV -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
             </intent-filter>
         </activity>
 

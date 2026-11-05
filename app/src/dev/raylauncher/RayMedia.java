@@ -35,7 +35,9 @@ import java.util.List;
 final class RayMedia {
     private static final Uri PREVIEW = Uri.parse("content://android.media.tv/preview_program");
     private static final Uri WATCH_NEXT = Uri.parse("content://android.media.tv/watch_next_program");
-    private static final String[] COLUMNS = {"title", "episode_title", "poster_art_uri", "thumbnail_uri", "intent_uri"};
+    private static final String[] COLUMNS = {"_id", "title", "episode_title", "poster_art_uri", "thumbnail_uri", "intent_uri",
+            "last_playback_position_millis", "duration_millis"};
+    private static final String[] COLUMNS_BASIC = {"_id", "title", "episode_title", "poster_art_uri", "thumbnail_uri", "intent_uri"};
     private static final int MAX_SUGGESTIONS = 12;
     private static final long SUGGESTION_TTL_MS = 30000;
 
@@ -52,7 +54,12 @@ final class RayMedia {
     private static String suggestionsPackage = "";
     private static long suggestionsAt;
     private static boolean refreshing;
-    private static List<RayWatchHistory.Entry> suggestions = new ArrayList<>();
+    /** The two lists of one app: Continue watching (Watch Next) and Suggested (preview programs); ids are stable per item. */
+    static final class Lists {
+        final List<RayWatchHistory.Entry> cont = new ArrayList<>(), sugg = new ArrayList<>();
+    }
+    private static Lists suggestions = new Lists();
+    private static final java.util.HashMap<String, byte[]> itemArt = new java.util.HashMap<>();
     /** Last foreground package seen by the accessibility service, when it is enabled. */
     static volatile String windowPackage = "";
 
@@ -145,13 +152,8 @@ final class RayMedia {
                 PackageManager pm = context.getPackageManager();
                 result.put("app", pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString());
             } catch (PackageManager.NameNotFoundException gone) { }
-            JSONArray list = new JSONArray();
-            List<RayWatchHistory.Entry> entries = suggestions(context, pkg);
-            for (int i = 0; i < entries.size(); i++) {
-                RayWatchHistory.Entry entry = entries.get(i);
-                list.put(new JSONObject().put("index", i).put("title", entry.title).put("art", entry.artUri));
-            }
-            result.put("suggestions", list);
+            Lists lists = suggestions(context, pkg);
+            result.put("continue", items(lists.cont)).put("suggestions", items(lists.sugg));
             result.put("searchable", searchIntent(context, pkg, "") != null);
         }
         MediaController controller = current(context, pkg.isEmpty() ? null : pkg);
@@ -217,26 +219,43 @@ final class RayMedia {
 
     static byte[] art() { return art; }
 
-    /** Recommendations the app publishes for the Android TV home, newest first. Queried off the UI thread; the cached list is returned. */
-    private static synchronized List<RayWatchHistory.Entry> suggestions(final Context context, final String pkg) {
+    private static JSONArray items(List<RayWatchHistory.Entry> entries) throws JSONException {
+        JSONArray list = new JSONArray();
+        for (RayWatchHistory.Entry entry : entries) {
+            String art = RayWatchHistory.remoteArt && entry.artUri != null && entry.artUri.startsWith("https:") || entry.artwork != null || entry.artUri != null && (entry.artUri.startsWith("content:") || entry.artUri.startsWith("image:"))
+                    ? "/item-art?id=" + Uri.encode(entry.id) : "";
+            list.put(new JSONObject().put("id", entry.id).put("title", entry.title).put("sub", entry.description)
+                    .put("art", art).put("progress", entry.progress).put("minutes", entry.minutesLeft));
+        }
+        return list;
+    }
+
+    /** Both lists of the app, newest first. Queried off the UI thread; the cached lists are returned. */
+    private static synchronized Lists suggestions(final Context context, final String pkg) {
         if (!pkg.equals(suggestionsPackage)) {
             suggestionsPackage = pkg;
-            suggestions = new ArrayList<>();
+            suggestions = new Lists();
             suggestionsAt = 0;
+            itemArt.clear();
         }
         long now = SystemClock.uptimeMillis();
         if (!refreshing && (suggestionsAt == 0 || now - suggestionsAt >= SUGGESTION_TTL_MS)) {
             refreshing = true;
             Thread thread = new Thread(new Runnable() {
                 @Override public void run() {
-                    List<RayWatchHistory.Entry> found = query(context, pkg);
+                    Lists found;
+                    try {
+                        found = RayKodi.matches(pkg) ? RayKodi.query(pkg)
+                                : RayDemo.on(context) ? RayDemo.appLists(context, pkg) : query(context, pkg);
+                    } catch (RuntimeException failed) {
+                        RayDebug.log("app lists: " + failed);
+                        found = new Lists();
+                    }
                     boolean changed;
                     synchronized (RayMedia.class) {
                         refreshing = false;
                         if (!pkg.equals(suggestionsPackage)) return;
-                        changed = found.size() != suggestions.size();
-                        for (int i = 0; !changed && i < found.size(); i++)
-                            changed = !found.get(i).title.equals(suggestions.get(i).title);
+                        changed = !sameItems(found.cont, suggestions.cont) || !sameItems(found.sugg, suggestions.sugg);
                         suggestions = found;
                         suggestionsAt = SystemClock.uptimeMillis();
                     }
@@ -249,32 +268,90 @@ final class RayMedia {
         return suggestions;
     }
 
-    private static List<RayWatchHistory.Entry> query(Context context, String pkg) {
-        ArrayList<RayWatchHistory.Entry> found = new ArrayList<>();
-        for (Uri uri : new Uri[]{WATCH_NEXT, PREVIEW}) {
-            Cursor cursor = null;
-            try {
-                cursor = context.getContentResolver().query(uri, COLUMNS, "package_name=?", new String[]{pkg}, "_id DESC");
-                while (cursor != null && cursor.moveToNext() && found.size() < MAX_SUGGESTIONS) {
-                    String title = cursor.getString(0), episode = cursor.getString(1);
-                    String poster = cursor.getString(2), thumbnail = cursor.getString(3), intent = cursor.getString(4);
-                    if (title == null || intent == null) continue;
-                    if (episode != null && !episode.isEmpty()) title += " · " + episode;
-                    String image = thumbnail != null && thumbnail.startsWith("http") ? thumbnail
-                            : poster != null && poster.startsWith("http") ? poster : "";
-                    found.add(new RayWatchHistory.Entry(title, pkg, intent, null, image));
-                }
-            } catch (RuntimeException unavailable) {
-            } finally {
-                if (cursor != null) cursor.close();
-            }
+    private static boolean sameItems(List<RayWatchHistory.Entry> a, List<RayWatchHistory.Entry> b) {
+        if (a.size() != b.size()) return false;
+        for (int i = 0; i < a.size(); i++)
+            if (!a.get(i).id.equals(b.get(i).id) || !a.get(i).title.equals(b.get(i).title) || a.get(i).progress != b.get(i).progress) return false;
+        return true;
+    }
+
+    /** What an app publishes to the Android TV provider: Watch Next (continue) and preview programs (suggested). An app that publishes nothing gives two empty lists. */
+    private static Lists query(Context context, String pkg) {
+        Lists found = new Lists();
+        read(context, WATCH_NEXT, "wn", pkg, found.cont);
+        read(context, PREVIEW, "pp", pkg, found.sugg);
+        for (java.util.Iterator<RayWatchHistory.Entry> it = found.sugg.iterator(); it.hasNext(); ) { // one item, one list
+            RayWatchHistory.Entry s = it.next();
+            for (RayWatchHistory.Entry c : found.cont) if (c.intentUri.equals(s.intentUri)) { it.remove(); break; }
         }
         return found;
     }
 
-    static synchronized boolean openSuggestion(Context context, String pkg, int index) {
-        if (!pkg.equals(suggestionsPackage) || index < 0 || index >= suggestions.size()) return false;
-        return RayWatchHistory.launch(context, suggestions.get(index));
+    private static void read(Context context, Uri uri, String prefix, String pkg, List<RayWatchHistory.Entry> into) {
+        for (String[] columns : new String[][]{COLUMNS, COLUMNS_BASIC}) { // a provider may reject the position columns
+            Cursor cursor = null;
+            try {
+                cursor = RayAdb.query(context, uri, columns, pkg, "_id DESC");
+                if (cursor == null) continue;
+                while (cursor.moveToNext() && into.size() < MAX_SUGGESTIONS) {
+                    String title = cursor.getString(1), episode = cursor.getString(2);
+                    String poster = cursor.getString(3), thumbnail = cursor.getString(4), intent = cursor.getString(5);
+                    if (title == null || intent == null) continue;
+                    boolean again = false; // apps publish one row per play: the same title once is enough
+                    for (RayWatchHistory.Entry seen : into) if (seen.title.equals(title)) again = true;
+                    if (again) continue;
+                    String image = thumbnail != null && !thumbnail.isEmpty() ? thumbnail : poster == null ? "" : poster;
+                    RayWatchHistory.Entry entry = new RayWatchHistory.Entry(title, pkg, intent, null, image);
+                    entry.id = prefix + ":" + cursor.getLong(0);
+                    if (episode != null) entry.description = episode;
+                    if (columns.length > 6) {
+                        long done = cursor.getLong(6), total = cursor.getLong(7);
+                        if (total > 0 && done > 0 && done < total) {
+                            entry.progress = (float) done / total;
+                            entry.minutesLeft = (int) Math.max(1, (total - done) / 60000);
+                        }
+                    }
+                    into.add(entry);
+                }
+                return;
+            } catch (RuntimeException unavailable) {
+                into.clear();
+            } finally {
+                if (cursor != null) cursor.close();
+            }
+        }
+    }
+
+    private static synchronized RayWatchHistory.Entry find(String pkg, String id) {
+        if (!pkg.equals(suggestionsPackage) || id == null) return null;
+        for (RayWatchHistory.Entry e : suggestions.cont) if (e.id.equals(id)) return e;
+        for (RayWatchHistory.Entry e : suggestions.sugg) if (e.id.equals(id)) return e;
+        return null;
+    }
+
+    /** Opens an item of the app on screen by its id; the intent comes from the TV provider (checked against the app's package), never from the phone. */
+    static boolean openSuggestion(Context context, String pkg, String id) {
+        RayWatchHistory.Entry e = find(pkg, id);
+        if (e == null) return false;
+        return RayKodi.matches(pkg) ? RayKodi.open(e) : RayWatchHistory.launch(context, e);
+    }
+
+    /** Artwork of an item of the app on screen (decoded on request, cached), or null. */
+    static byte[] itemArt(Context context, String id) {
+        String pkg = suggestionsPackage;
+        RayWatchHistory.Entry e = find(pkg, id);
+        if (e == null) return null;
+        synchronized (RayMedia.class) { byte[] hit = itemArt.get(id); if (hit != null) return hit; }
+        byte[] bytes = null;
+        Bitmap bitmap = e.artwork;
+        if (bitmap == null && e.artUri != null && (e.artUri.startsWith("content:") || RayWatchHistory.remoteArt && e.artUri.startsWith("https:"))) bitmap = RayWatchHistory.decodeUri(context, e.artUri);
+        if (bitmap != null) {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 80, out);
+            bytes = out.toByteArray();
+        } else if (RayKodi.matches(pkg)) bytes = RayKodi.image(e.artUri);
+        if (bytes != null) synchronized (RayMedia.class) { if (pkg.equals(suggestionsPackage)) itemArt.put(id, bytes); }
+        return bytes;
     }
 
     static boolean control(Context context, String pkg, String action, long amount) {
@@ -307,8 +384,20 @@ final class RayMedia {
     }
 
     private static Intent searchIntent(Context context, String pkg, String query) {
+        android.content.pm.PackageManager pm = context.getPackageManager();
         Intent search = new Intent(Intent.ACTION_SEARCH).setPackage(pkg).putExtra(SearchManager.QUERY, query);
-        return search.resolveActivity(context.getPackageManager()) == null ? null : search;
+        if (search.resolveActivity(pm) != null) return search;
+        String web = pkg.startsWith("com.netflix.") ? "https://www.netflix.com/search?q=" : pkg.startsWith("com.google.android.youtube") ? "https://www.youtube.com/results?search_query=" : null;
+        if (web != null) {
+            Intent view = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(web + android.net.Uri.encode(query))).setPackage(pkg);
+            if (view.resolveActivity(pm) != null) return view;
+        }
+        return null;
+    }
+
+    /** Whether "search in this app" can work: the app takes a search intent, or a search link RAY knows. */
+    static boolean canSearch(Context context, String pkg) {
+        return searchIntent(context, pkg, "x") != null;
     }
 
     /** Opens the app's own search with the query (apps with a searchable activity, e.g. SmartTube). */

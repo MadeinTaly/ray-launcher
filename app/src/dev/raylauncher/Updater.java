@@ -43,6 +43,17 @@ final class Updater {
     private Updater() {
     }
 
+    /** False on F-Droid installs and in builds packaged without REQUEST_INSTALL_PACKAGES (the F-Droid recipe). */
+    static boolean available(Context c) {
+        if (Compat.fromFdroid(c)) return false;
+        try {
+            String[] p = c.getPackageManager().getPackageInfo(c.getPackageName(), android.content.pm.PackageManager.GET_PERMISSIONS).requestedPermissions;
+            return p != null && java.util.Arrays.asList(p).contains("android.permission.REQUEST_INSTALL_PACKAGES");
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     static boolean enabled(Context c) {
         return prefs(c).getBoolean("upd", true);
     }
@@ -76,7 +87,7 @@ final class Updater {
     /** Call from onResume of the start screen: at most one check every 6 hours per process. */
     static void check(Activity a) {
         long now = System.currentTimeMillis();
-        if (busy || now - lastCheck < EVERY_MS || !enabled(a) || Compat.fromFdroid(a)) return;
+        if (busy || now - lastCheck < EVERY_MS || !enabled(a) || !available(a)) return;
         busy = true;
         new Thread(new Check(a), "update-check").start();
     }

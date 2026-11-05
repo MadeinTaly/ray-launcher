@@ -81,6 +81,7 @@ public class DimService extends Service implements Runnable {
     @Override
     public void onCreate() {
         super.onCreate();
+        RayDebug.init(this);
         I18n.init(this);
         prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
         RayVpn.start(this);
@@ -413,6 +414,27 @@ public class DimService extends Service implements Runnable {
         return prefs.getString("key", null);
     }
 
+    /** Pairing window (POST /api/pair/start .. finish): one code, 120 s. */
+    static final PinGate PAIR = new PinGate();
+
+    /**
+     * Set by the home screen while it is in front: run on the main thread each time the pairing window opens or closes
+     * (read {@link #pairCode()}; null = closed). While it is null the code is drawn by the Osd overlay instead.
+     */
+    static volatile Runnable pairListener;
+
+    /** The code of the open pairing window, or null. */
+    static String pairCode() {
+        return PAIR.code(System.currentTimeMillis());
+    }
+
+    /** Main thread: shows the pairing code over everything for its lifetime (null hides it); false if it cannot be drawn. */
+    boolean pinOsd(String pin) {
+        if (osd == null) osd = new Osd(this);
+        if (pin == null) osd.hide();
+        return pin == null || osd.showPin(MainActivity.t("Pairing code", "Codice di abbinamento"), pin, PinGate.TTL);
+    }
+
     /** Device name and model, for naming this device in the phone app. */
     String infoJson() {
         try {
@@ -736,6 +758,7 @@ public class DimService extends Service implements Runnable {
 
     @Override
     protected void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+        if (args.length > 0 && args[0].equals("debug")) { pw.println(RayDebug.dump(this)); return; }
         pw.println("red=" + red + " bright=" + bright + " temp=" + temp + " visible=" + (view != null)
                 + " off=" + off + " mode=" + (DimAccessibilityService.instance != null ? "accessibility" : "overlay")
                 + " clamped=" + clamped + " blocked=" + blocked + " remote=" + (server != null) + " schedule=" + scheduleOn);

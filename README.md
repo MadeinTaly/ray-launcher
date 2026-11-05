@@ -1,5 +1,10 @@
 # RAY
 
+<p align="center">
+  <img src="fastlane/metadata/android/en-US/images/tvScreenshots/1.png" width="66%" alt="RAY home, Horizon theme at night">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" width="20%" alt="RAY phone remote">
+</p>
+
 RAY is a lightweight, open-source **Android TV launcher** with a **phone companion**. It has a skin engine with
 day/night looks, a phone remote with an air mouse, a screen filter with a schedule, and device audio effects.
 It is plain Java with no Gradle, no analytics and no third-party SDKs. The network is used only on your local
@@ -10,23 +15,31 @@ network, except for an optional weather lookup that stays off until you consent.
 
 ## Features
 
-- **Launcher**: home screen with your installed apps (banners, names, icons), a full app catalog, and, if you allow
-  it, the "Watch Next" entries published by other Android TV apps.
-- **Skins**: the whole look of the home is a skin, a folder with a `skin.json` and a frame image. Several skins are
-  bundled (frameless "stock" skins and framed artwork skins), each with a **day** and a **night** look that switch
-  automatically at sunrise and sunset (or at fixed hours when weather is off). You can make your own:
-  see [docs/SKIN_FORMAT.md](docs/SKIN_FORMAT.md) and the helper scripts in [`tools/`](tools).
-- **Phone remote**: pair the phone by scanning the QR code on the TV (or from a browser, no app needed). D-pad, text
-  search, app launcher, media controls for the app on screen, wallpaper and skin selection.
+- **Launcher**: the home has a *Continue watching* row (the "Watch Next" entries other Android TV apps publish, if you
+  allow it) above your apps row, which ends with *All apps*, a grid of everything installed. Long-press an app to pin it.
+- **Themes** (a theme is a skin): *Horizon*, *Magazine* and *Lacquer*, each with a **day** and a **night** variant that
+  switch automatically at sunrise and sunset (or at fixed hours when weather is off). Horizon has an animated
+  synthwave background with a sun by day and a moon by night. It runs only on capable devices (at least 1.8 GB of
+  RAM, 4 cores, OpenGL ES 3) and turns itself off if it measures slow frames; Settings: Automatic / On / Off.
+  A skin is a `skin.json` with optional wallpaper images and icons, so you can make your own:
+  see [docs/SKIN_FORMAT.md](docs/SKIN_FORMAT.md) and [`tools/skin_pack.py`](tools/skin_pack.py).
+- **Search**: one search for titles, typed or by voice where the device has speech recognition, then inside every app that accepts it.
+- **Phone app** (optional, nothing on the TV asks for it: the D-pad remote alone is enough). Three tabs: *Remote*
+  (D-pad, air mouse, volume), *On TV* (playback controls, continue watching and suggestions of the app on screen,
+  app launcher) and *Settings*. Share a link from any phone app to open it on the TV. Pair by scanning the QR code on the
+  TV (Settings > Pair a phone) or by typing the 4-digit code it shows; a browser works too, no app needed.
 - **Air mouse**: steer a pointer on the TV with the motion of your phone (opt-in, adjustable sensitivity, recenter).
   The pointer can be drawn over other apps through Android's overlay permission or RAY's accessibility service.
+- **Full access** (optional, off by default, Settings > Home): on devices whose own ADB is open, RAY uses it (on the
+  device itself, see `app/src/dev/raylauncher/RayAdb.java`) to grant itself its permissions and to read the continue
+  watching and suggestion lists of every app. Details in [PRIVACY.md](PRIVACY.md).
 - **Screen filter and schedule**: a warm (red) filter and dimmer drawn above every app, with brightness and
   colour temperature, scenes, and a daily or weekly schedule with smooth transitions, applied by the TV itself.
 - **Audio effects** (where the device supports them): equalizer, bass, virtualizer and loudness on the output mix.
 - **Multiple devices**: the phone app finds TVs on the network (mDNS), keeps the ones you paired and can copy
   settings to several of them.
 - **Optional weather** on the home screen, off until you accept a consent dialog (see Privacy).
-- **Optional background music** on the home screen, asked once at first start: three CC0 tracks from
+- **Optional background music** on the home screen: off by default, a switch in Settings; three CC0 tracks from
   OpenGameArt (credits in [`app/assets/music/CREDITS.txt`](app/assets/music/CREDITS.txt)).
 - English, Italian, German, French and Spanish. Other languages: add `app/assets/i18n/<language>.json`
   (English text to translation), see the existing files.
@@ -38,7 +51,7 @@ network, except for an optional weather lookup that stays off until you consent.
   and install the same APK on the TV and on your phone (`adb install ray-launcher.apk` on the TV).
 
 On the TV, open RAY and choose it as the home app in the system settings when Android asks. On the phone, open RAY,
-pick *Connect a TV* and scan the QR code shown on the TV. The first start explains the optional permissions
+pick *Connect a TV* and scan the QR code shown on the TV, or type its 4-digit code. The first start explains the optional permissions
 (overlay, accessibility, usage access, notification access, Watch Next); each one is optional and only unlocks the
 feature described next to it.
 
@@ -84,10 +97,14 @@ java -cp /tmp/ray-test dev.raylauncher.ScheduleMathTest test/spec-cases.txt
 (On Windows use `;` as the classpath separator.) `test/ray_smoke.py` is a live check against a TV (`RAY_HOST=<tv address> RAY_KEY=<pairing key>`);
 `test/remote_ui.cjs` checks the browser remote offline with Playwright.
 
+On dev builds (`DEV=1 ./build.sh`) `test/ray_flow.py`, `test/ray_settings.py`, `test/ray_search.py` and `test/ray_phone.py` drive a TV and a phone (emulators or real) and check the state through the debug channel; `ray_phone.py` also injects the sensors to test the air mouse; `test/ray_real.py` checks a real TV with its real apps.
+
+Measured on a projector with 843 MB of RAM (Android 9): 1.4 s cold start, 0.2-0.6 s back to the home, 0% CPU at rest, about 80 MB of RAM with posters.
+
 ## Skins
 
-A skin is a folder you can copy to the TV or install from the phone. The format, with a full example, the day/night
-variants and the measuring and packing tools, is documented in [docs/SKIN_FORMAT.md](docs/SKIN_FORMAT.md).
+A skin is a folder you can copy to the TV or install from the phone. The format, with an example and the day/night
+variants, is documented in [docs/SKIN_FORMAT.md](docs/SKIN_FORMAT.md).
 The realtime WebSocket protocol used by the phone is in [docs/PROTOCOL.md](docs/PROTOCOL.md).
 
 ## Control from scripts
@@ -125,28 +142,27 @@ claude mcp add --transport http ray http://TV_IP:8766/mcp --header "X-Key: PAIRI
 ```
 
 It uses the pairing key like the rest of the API and plain HTTP on the local network, so anyone with the key on
-your Wi-Fi can do what the phone remote can. Settings > Debug panel shows the commands as they arrive.
+your Wi-Fi can do what the phone remote can. Dev builds (`DEV=1 ./build.sh`) also have a debug channel: `adb shell dumpsys activity service dev.raylauncher/.DimService debug`. It does not exist in release builds.
 
 ## Screenshots
 
-Sample content (generated, no third-party artwork) shown with different skins.
+Demo mode with generated sample content: Horizon, Magazine and Lacquer, night and day; then the phone app.
 
-![Essenziale, day](fastlane/metadata/android/en-US/images/tvScreenshots/1.png)
-![Astrolabio](fastlane/metadata/android/en-US/images/tvScreenshots/4.png)
-![Giardino, night](fastlane/metadata/android/en-US/images/tvScreenshots/8.png)
-
-## Screenshots
-
-Sample content (generated, no third-party artwork) shown with different skins.
-
-![Essenziale, day](fastlane/metadata/android/en-US/images/tvScreenshots/1.png)
-![Astrolabio](fastlane/metadata/android/en-US/images/tvScreenshots/4.png)
-![Giardino, night](fastlane/metadata/android/en-US/images/tvScreenshots/8.png)
+![Horizon, night](fastlane/metadata/android/en-US/images/tvScreenshots/1.png)
+![Horizon, day](fastlane/metadata/android/en-US/images/tvScreenshots/2.png)
+![Magazine, night](fastlane/metadata/android/en-US/images/tvScreenshots/3.png)
+![Magazine, day](fastlane/metadata/android/en-US/images/tvScreenshots/4.png)
+![Lacquer, night](fastlane/metadata/android/en-US/images/tvScreenshots/5.png)
+![Lacquer, day](fastlane/metadata/android/en-US/images/tvScreenshots/6.png)
+![Phone: Remote](fastlane/metadata/android/en-US/images/phoneScreenshots/1.png)
+![Phone: On TV](fastlane/metadata/android/en-US/images/phoneScreenshots/2.png)
+![Phone: Settings](fastlane/metadata/android/en-US/images/phoneScreenshots/3.png)
 
 ## Privacy
 
-RAY has no accounts, analytics or ads, and talks only to your local network. The only internet request is the
-optional weather lookup, after you accept a consent dialog. Details in [PRIVACY.md](PRIVACY.md).
+RAY has no accounts, analytics or ads, and talks to your local network. Internet requests: the optional weather
+lookup (after consent), the update check (GitHub installs only) and, with Full access on, poster images from the
+addresses other apps publish. Details in [PRIVACY.md](PRIVACY.md).
 
 ## Updates
 
@@ -158,13 +174,19 @@ updates them.
 
 ## Third-party
 
-- [QR Code generator library](https://www.nayuki.io/page/qr-code-generator-library) by Project Nayuki,
-  MIT License (`app/src/io/nayuki/qrcodegen`, unmodified)
-- [Tailwind CSS](https://tailwindcss.com), MIT License (compiled into `app/assets/remote.css`)
-- [dayrhythm](https://github.com/MadeinTaly/dayrhythm), MIT License (git submodule `vendor/dayrhythm`, used
-  unminified from its `src/`; the schedule editor of the phone page)
-- Fonts: Chakra Petch and Inconsolata (SIL OFL 1.1) are not bundled in this release.
-- The colour of the filter comes from Tanner Helland's black-body approximation.
+Full notices, also inside the app: [`app/assets/THIRD_PARTY.txt`](app/assets/THIRD_PARTY.txt).
+
+| Material | Copyright | License |
+|---|---|---|
+| Icons, [Lucide](https://lucide.dev) (partly from Feather) | Lucide Icons and Contributors; Cole Bemis | ISC, MIT |
+| [QR Code generator library](https://www.nayuki.io/page/qr-code-generator-library), `app/src/io/nayuki/qrcodegen`, unmodified | Project Nayuki | MIT |
+| [dayrhythm](https://github.com/MadeinTaly/dayrhythm), submodule `vendor/dayrhythm` | dayrhythm contributors | MIT |
+| Font [Chakra Petch](https://github.com/m4rc1e/Chakra-Petch) | The Chakra Petch Project Authors | SIL OFL 1.1 |
+| Font [Figtree](https://github.com/erikdkennedy/figtree) | The Figtree Project Authors | SIL OFL 1.1 |
+| Font [Instrument Sans](https://github.com/Instrument/instrument-sans) | The Instrument Sans Project Authors | SIL OFL 1.1 |
+| Music: "Heavenly Loop" and "Slow Stride" by isaiah658, "Calm Track" by pmiller, from OpenGameArt | public domain dedication | CC0 1.0 (credit not required, given with thanks) |
+
+The RAY icon, the animated backgrounds and all screenshots are the project's own; screenshots show generated sample content.
 
 ## Support
 
@@ -172,11 +194,14 @@ If RAY is useful to you, you can support its development: https://linktr.ee/made
 
 ## Italiano
 
-RAY e un launcher Android TV leggero e open source, con app per il telefono: skin con aspetto giorno/notte,
-telecomando con mouse ad aria, filtro schermo con programmazione, effetti audio. Nessun account, nessun
-tracciamento: la rete e usata solo nella tua rete locale; il meteo e facoltativo e parte solo dopo il tuo consenso.
+RAY e un launcher Android TV leggero e open source, con app per il telefono. Home con la riga *Continua a guardare* sopra le app e
+la griglia *Tutte le app*; tre temi (Orizzonte, Rivista, Lacca) con aspetto giorno/notte (Orizzonte ha lo sfondo animato,
+solo sui dispositivi capaci: almeno 1,8 GB di RAM, 4 core, GLES 3, e si spegne da solo se rallenta; Automatico/Acceso/Spento);
+ricerca unica anche a voce; telefono facoltativo (la TV funziona anche col solo telecomando a frecce) con schede Telecomando,
+Sul TV e Impostazioni, abbinamento con QR o codice a 4 cifre, mouse ad aria, condivisione di link verso la TV; accesso
+completo facoltativo (Impostazioni > Home); filtro schermo con programmazione, effetti audio. Nessun account, nessun
+tracciamento: la rete e usata nella tua rete locale; meteo e aggiornamenti sono descritti in [PRIVACY.md](PRIVACY.md).
 Installazione, compilazione e formato delle skin sono descritti sopra e in [docs/SKIN_FORMAT.md](docs/SKIN_FORMAT.md).
-Informativa: [PRIVACY.md](PRIVACY.md).
 
 ## License
 

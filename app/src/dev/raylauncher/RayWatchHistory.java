@@ -33,6 +33,8 @@ final class RayWatchHistory {
         final String intentUri;
         final Bitmap artwork;
         final String artUri;
+        /** Stable id inside one app's lists ("wn:12", "pp:7", "kodi-movie-3"), or "". */
+        String id = "";
         /** Short description from the publisher, or "". */
         String description = "";
         /** Watched fraction 0..1, or -1 when the publisher gives no position/duration. */
@@ -70,7 +72,11 @@ final class RayWatchHistory {
         }
     }
 
+    /** Posters on the web: fetched only after the person turned Full access on, the setting says so. */
+    static volatile boolean remoteArt;
+
     static List<Entry> load(Context context) {
+        remoteArt = RayAdb.enabled(context);
         ArrayList<Row> rows = new ArrayList<>();
         // the extended projection is standard TvContract, but a odd provider may reject it: retry with the basics
         if (!query(context, COLUMNS_EXT, rows)) {
@@ -81,7 +87,7 @@ final class RayWatchHistory {
     }
 
     private static boolean query(Context context, String[] columns, ArrayList<Row> rows) {
-        try (Cursor cursor = context.getContentResolver().query(WATCH_NEXT, columns, null, null, null)) {
+        try (Cursor cursor = RayAdb.query(context, WATCH_NEXT, columns, null, null)) {
             if (cursor == null) return false;
             int description = cursor.getColumnIndex("short_description");
             int position = cursor.getColumnIndex("last_playback_position_millis");
@@ -130,21 +136,37 @@ final class RayWatchHistory {
         int attempts = 0;
         // shortcut: try 12 recent artwork rows; raise when provider history often has unavailable art.
         for (Row row : rows) {
-            if (result.size() == 6 || attempts == 14 || expired(deadline)) break;
+            if (result.size() == 10 || attempts == 14 || expired(deadline)) break;
             String key = contentKey(row.intentUri);
-            if (key == null || !seen.add(key)) continue;
+            if (key == null || !seen.add(key) || !seen.add(row.packageName + "|" + row.title)) continue; // the same title twice is noise
             attempts++;
             Bitmap image = decode(context.getContentResolver(), row.thumbnail, deadline);
             if (image == null && !expired(deadline)) image = decode(context.getContentResolver(), row.poster, deadline);
-            if (image != null) {
-                Entry entry = new Entry(row.title, row.packageName, row.intentUri, image);
-                entry.description = row.description;
-                entry.progress = row.progress;
-                entry.minutesLeft = row.minutesLeft;
-                result.add(entry);
-            }
+            // no picture is no reason to lose what you were watching: the card shows its title
+            Entry entry = new Entry(row.title, row.packageName, row.intentUri, image);
+            entry.description = row.description;
+            entry.progress = row.progress;
+            entry.minutesLeft = row.minutesLeft;
+            result.add(entry);
         }
         return result;
+    }
+
+    /** A poster address comes from an app: never let it reach this device or the home network. */
+    private static boolean publicHost(String host) {
+        if (host == null) return false;
+        try {
+            for (java.net.InetAddress a : java.net.InetAddress.getAllByName(host))
+                if (a.isLoopbackAddress() || a.isSiteLocalAddress() || a.isLinkLocalAddress() || a.isAnyLocalAddress() || a.isMulticastAddress()) return false;
+            return true;
+        } catch (java.io.IOException unresolved) {
+            return false;
+        }
+    }
+
+    /** Artwork behind a content:// URI the TV can read (bounded in size and time), or null. */
+    static Bitmap decodeUri(Context context, String uri) {
+        return decode(context.getContentResolver(), uri, SystemClock.elapsedRealtime() + 4000);
     }
 
     static boolean launch(Context context, Entry entry) {
@@ -182,11 +204,18 @@ final class RayWatchHistory {
     private static Bitmap decode(ContentResolver resolver, String value, long deadline) {
         if (empty(value) || expired(deadline)) return null;
         try {
-            Uri uri = Uri.parse(value);
+            int space = value.indexOf(' '); // some apps leave a srcset suffix: "...jpg 2x"
+            Uri uri = Uri.parse(space > 0 ? value.substring(0, space) : value);
             String scheme = uri.getScheme();
-            // note: only local content:// artwork is read; remote image URLs are ignored so that no third-party host is contacted
-            if (!"content".equalsIgnoreCase(scheme)) return null;
-            InputStream input = resolver.openInputStream(uri);
+            InputStream input;
+            if ("content".equalsIgnoreCase(scheme)) input = resolver.openInputStream(uri);
+            else if (remoteArt && "https".equalsIgnoreCase(scheme) && publicHost(uri.getHost())) { // only with Full access on
+                java.net.HttpURLConnection web = (java.net.HttpURLConnection) new java.net.URL(uri.toString()).openConnection();
+                web.setInstanceFollowRedirects(false); // a redirect could point into the home network
+                web.setConnectTimeout(3000);
+                web.setReadTimeout(4000);
+                input = web.getInputStream();
+            } else return null;
             if (input == null) return null;
             byte[] bytes;
             try (InputStream stream = input; ByteArrayOutputStream output = new ByteArrayOutputStream()) {
@@ -207,6 +236,7 @@ final class RayWatchHistory {
             if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null;
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inSampleSize = 1;
+            options.inPreferredConfig = Bitmap.Config.RGB_565; // posters have no alpha: half the memory
             int largest = Math.max(bounds.outWidth, bounds.outHeight);
             while (largest / options.inSampleSize > 512) options.inSampleSize *= 2;
             if (expired(deadline)) return null;

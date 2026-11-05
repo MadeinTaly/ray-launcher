@@ -25,6 +25,9 @@ import java.nio.charset.StandardCharsets;
  *   GET  /api/discovered TVs announced on the network (mDNS, see Discovery) and not saved yet
  *   GET  /api/devices    saved devices [{"id":"host:port","name":..,"host":..,"port":..}] (keys stay in the app)
  *   POST /api/devices    {"op":"add","link":..} | {"op":"edit","id":..,"name":..,"type":..} (either) | {"op":"delete","id":..}
+ *                        | {"op":"pairstart","host":..,"port":..} | {"op":"pair","host":..,"port":..,"pin":"1234","did":..,"name":..}:
+ *                        the TV shows its code (POST /api/pair/start), then the code is traded for its key (POST /api/pair/finish)
+ *                        and the TV saved: {"ok":true,"id":..} or {"ok":false,"error":"pin|closed|locked|wait|unreachable"}
  *                        type: projector, tv, tablet, phone, monitor or other (icon only)
  *   ANY  /d/{host:port}/api/...   forwarded to that saved device with its pairing key; for a TV that Discovery saw at
  *                        a new address the answer carries the header X-Moved-To: {newhost:port}
@@ -83,6 +86,9 @@ final class AppApi {
             String added = Devices.addLink(p, Uri.parse(j.optString("link").trim()));
             return added == null ? null : "{\"ok\":true,\"id\":" + JSONObject.quote(added) + "}";
         }
+        if (op.equals("pairstart") || op.equals("pair"))
+            return pair(p, op.equals("pair"), j.optString("host"), j.optInt("port", RemoteServer.PORT), j.optString("pin"),
+                    j.optString("did"), Devices.cleanName(j.optString("name", null)));
         JSONObject d = Devices.byId(p, id);
         if (d == null) return null;
         if (op.equals("edit")) {
@@ -100,6 +106,35 @@ final class AppApi {
             return null;
         }
         return "{\"ok\":true}";
+    }
+
+    /** Pairs with a TV by the code on its screen; the JSON answer says what went wrong. */
+    private static String pair(SharedPreferences p, boolean finish, String host, int port, String pin, String did, String name) {
+        if (!host.matches("[A-Za-z0-9.-]{1,253}") || port < 1 || port > 65535 || (finish && !pin.matches("[0-9]{4}"))) return null;
+        String error = "unreachable";
+        try {
+            byte[] body = (finish ? "{\"pin\":\"" + pin + "\"}" : "{}").getBytes(StandardCharsets.UTF_8);
+            Object[] r = call(host, port, "", finish ? "/api/pair/finish" : "/api/pair/start", "POST", body, body.length);
+            int code = (Integer) r[0];
+            JSONObject a = new JSONObject(text((byte[]) r[1], ((byte[]) r[1]).length));
+            if (code == 200 && !finish) return "{\"ok\":true,\"shown\":" + a.optBoolean("shown") + "}";
+            if (code == 200) {
+                String k = a.optString("k");
+                if (k.matches("[0-9a-f]{1,128}")) {
+                    Devices.upsert(p, name, host, port, k);
+                    if (did.matches("[0-9a-f]{1,32}")) Devices.setField(p, host, port, "did", did);
+                    return "{\"ok\":true,\"id\":" + JSONObject.quote(host + ":" + port) + "}";
+                }
+            } else if (code == 429) {
+                error = "wait";
+            } else if (code == 403) {
+                error = a.optString("error");
+                if (!error.equals("closed") && !error.equals("locked")) error = "pin";
+            }
+        } catch (IOException | JSONException e) {
+            // unreachable
+        }
+        return "{\"ok\":false,\"error\":\"" + error + "\"}";
     }
 
     /** Forwards /d/{host:port}/api/... to the saved device and writes its answer (502 if unreachable). */
@@ -138,7 +173,7 @@ final class AppApi {
     }
 
     /** One request to a TV: {status code, body}. */
-    private static Object[] call(String host, int port, String key, String rest, String method, byte[] body, int length)
+    static Object[] call(String host, int port, String key, String rest, String method, byte[] body, int length)
             throws IOException {
         HttpURLConnection c = (HttpURLConnection) new URL("http://" + host + ":" + port + rest)
                 .openConnection();

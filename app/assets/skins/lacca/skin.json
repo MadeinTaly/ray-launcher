@@ -1,0 +1,59 @@
+{
+  "format": 1,
+  "id": "lacca",
+  "name": {
+    "it": "Lacca",
+    "en": "Lacquer",
+    "de": "Lack",
+    "fr": "Laque",
+    "es": "Laca"
+  },
+  "author": "RAY",
+  "accent": "#D9B15F",
+  "wallpaperDefault": {
+    "gradient": [
+      "#06302F",
+      "#06302F"
+    ],
+    "stops": [
+      0,
+      1
+    ],
+    "angle": 180
+  },
+  "style": {
+    "layout": "lacca",
+    "surface": "#06302F",
+    "surface2": "#020F12",
+    "moon": "#EFE3C8",
+    "text": "#F4E9D0",
+    "muted": "#BFB08C",
+    "ring": "#D9B15F",
+    "cardRadius": 18,
+    "focusScale": 1.12,
+    "dim": 0.86,
+    "ringDp": 3,
+    "shadow": "#99000000",
+    "panelFill": "#4D020F12",
+    "panelStrong": "#4DD9B15F",
+    "ok": "#9CC78A",
+    "btnBg": "#D9B15F",
+    "btnFg": "#1B1408",
+    "btn2Bg": "#26F4E9D0",
+    "btn2Fg": "#F4E9D0"
+  },
+  "variants": {
+    "night": {},
+    "day": {
+      "accent": "#E0BC6C",
+      "style": {
+        "surface": "#6E1414",
+        "surface2": "#250607",
+        "moon": "#F3E7CE",
+        "ring": "#E0BC6C",
+        "panelFill": "#4D250607",
+        "btnBg": "#E0BC6C"
+      }
+    }
+  }
+}

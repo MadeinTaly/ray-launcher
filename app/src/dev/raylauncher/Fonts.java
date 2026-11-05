@@ -40,6 +40,12 @@ final class Fonts {
     /** Clock and heads: 400, or 500 for small titles. */
     static Typeface display(Context c, int weight) { return load(c, "InstrumentSans.ttf", weight, "sans-serif"); }
 
+    /** Heads of the rivista and lacca compositions: the system serif. */
+    static Typeface serif() { return Typeface.create("serif", Typeface.NORMAL); }
+
+    /** Clock, titles and buttons of the animated themes (SIL OFL). */
+    static Typeface chakra(Context c) { return load(c, "ChakraPetch-SemiBold.ttf", 600, "sans-serif-medium"); }
+
     static Typeface mono(Context c) { return Typeface.MONOSPACE; }
 
     /** Sets the app typeface on every text of a view tree, keeping bold where it was bold. */

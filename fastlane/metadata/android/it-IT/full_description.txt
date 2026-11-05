@@ -1,12 +1,14 @@
 RAY è un launcher leggero e open source per Android TV, con app companion per il telefono.
 
 <b>Launcher</b>
-* Home con le tue app installate (banner, nomi, icone), catalogo completo e, se lo permetti, le voci "Continua a guardare" delle app TV
-* <b>Skin</b>: tutto l'aspetto della home è una skin. Ne sono incluse diverse, ognuna con un aspetto giorno e uno notte che cambiano da soli ad alba e tramonto. Crea le tue: il formato è documentato e aperto
+* Continua a guardare in alto (le voci "Watch Next" delle app TV, se lo permetti), le tue app sotto e Tutte le app, una griglia con tutto. Funziona benissimo anche col solo telecomando a frecce
+* <b>Temi</b>: Orizzonte, Rivista e Lacca, ognuno con una variante giorno e una notte che cambiano da sole ad alba e tramonto. Orizzonte ha uno sfondo animato (sole di giorno, luna di notte) sui dispositivi che lo reggono, con impostazione Automatico / Acceso / Spento. Crea i tuoi: il formato è documentato e aperto
+* Una sola ricerca: scrivi o di' un titolo, poi cerca dentro ogni app che la accetta
+* Musica di sottofondo facoltativa, spenta di default (un interruttore nelle Impostazioni)
 
-<b>Telecomando sul telefono</b>
-* Abbina inquadrando il QR sulla TV, oppure dal browser: nessun account
-* Frecce, ricerca, lancio app, controlli multimediali per l'app in primo piano, sfondo e scelta della skin
+<b>Telecomando sul telefono (facoltativo)</b>
+* Sulla TV niente chiede un telefono. Abbina con QR o codice a 4 cifre, oppure dal browser: nessun account
+* Schede Telecomando, Sul TV (controlli di riproduzione, continua a guardare e proposti dell'app in primo piano) e Impostazioni; condividi un link da qualsiasi app per aprirlo sulla TV
 * <b>Mouse ad aria</b>: muovi un puntatore sulla TV con i movimenti del telefono (facoltativo), anche sopra le altre app
 * Trova le TV sulla rete e può copiare le impostazioni su più TV
 
@@ -19,5 +21,7 @@ RAY è un launcher leggero e open source per Android TV, con app companion per i
 * Nessun account, nessun tracker, nessuna pubblicità, nessun SDK di terze parti
 * La rete è usata solo nella tua rete locale (porta 8766, protetta da una chiave di abbinamento)
 * Meteo facoltativo nella home: spento finché non dai il consenso; poi vengono inviati solo la città e le sue coordinate a Open-Meteo (UE) o OpenWeatherMap (con la tua chiave)
+
+* Accesso completo (facoltativo, Impostazioni > Home): sui dispositivi con ADB aperto, RAY lo usa per darsi i permessi e leggere le liste delle app
 
 Android 8.0 o successivo. Ogni permesso aggiuntivo (sovrapposizione, accessibilità, accesso all'utilizzo, notifiche, Watch Next) è facoltativo e sblocca solo la sua funzione. Codice sorgente e formato delle skin: github.com/MadeinTaly/ray-launcher

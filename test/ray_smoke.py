@@ -99,6 +99,9 @@ with connect() as sock:
         {'type': 'remote.key', 'id': 'right', 'payload': {'key': 'DPAD_RIGHT'}},
         {'type': 'app.launch', 'id': 'bad-package', 'payload': {'package': 'invalid.not.installed'}},
         {'type': 'arbitrary.shell', 'id': 'denied', 'payload': {'command': 'id'}},
+        {'type': 'url.open', 'id': 'url-file', 'payload': {'url': 'file:///etc/passwd'}},
+        {'type': 'url.open', 'id': 'url-js', 'payload': {'url': 'javascript:alert(1)'}},
+        {'type': 'media.open', 'id': 'unknown-item', 'payload': {'id': 'nope'}},
     ]:
         send(sock, request)
         ack = until(sock, 'ack', request['id'])
