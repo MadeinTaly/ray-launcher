@@ -30,7 +30,7 @@
     "cardRadius": 2,
     "focusScale": 1.12,
     "dim": 0.86,
-    "ringDp": 3,
+    "ringDp": 2,
     "shadow": "#99000000",
     "panelFill": "#1AF3EEE4",
     "panelStrong": "#33F3EEE4",

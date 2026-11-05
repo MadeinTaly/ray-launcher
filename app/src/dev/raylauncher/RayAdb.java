@@ -20,6 +20,9 @@ final class RayAdb {
     private static final java.util.concurrent.ThreadPoolExecutor KEYS = new java.util.concurrent.ThreadPoolExecutor(1, 1, 0, java.util.concurrent.TimeUnit.SECONDS,
             new java.util.concurrent.ArrayBlockingQueue<Runnable>(1), new java.util.concurrent.ThreadPoolExecutor.DiscardPolicy());
 
+    /** Set by probe(): Full access is on but the device's ADB does not answer now. */
+    static volatile boolean broken;
+
     private RayAdb() { }
 
     static boolean enabled(Context c) {
@@ -28,6 +31,13 @@ final class RayAdb {
 
     static void disable(Context c) {
         c.getSharedPreferences(DimService.PREFS, Context.MODE_PRIVATE).edit().putBoolean(PREF, false).apply();
+    }
+
+    /** Network: never on the UI thread. Does the ADB of this device still answer? Short read timeout, the answer is local. */
+    static boolean probe() {
+        try { broken = !AdbClient.shell("127.0.0.1", PORT, "echo ok", 2000).contains("ok"); }
+        catch (IOException closed) { broken = true; }
+        return !broken;
     }
 
     /** Network: never on the UI thread. False when this device's ADB is closed or wants an authorisation. */
@@ -47,13 +57,14 @@ final class RayAdb {
         // only the real adbd can grant this: anything else answering on that port gets nowhere
         if (c.checkSelfPermission("android.permission.WRITE_SECURE_SETTINGS") != android.content.pm.PackageManager.PERMISSION_GRANTED) return false;
         c.getSharedPreferences(DimService.PREFS, Context.MODE_PRIVATE).edit().putBoolean(PREF, true).apply();
+        broken = false;
         RayDebug.log("full access on");
         return true;
     }
 
     /** One key through ADB. False when Full access is off. */
     static boolean key(Context c, final int keyCode) {
-        if (!enabled(c)) return false;
+        if (!enabled(c) || broken) return false;
         KEYS.execute(new Runnable() {
             @Override public void run() {
                 try { AdbClient.shell(PORT, "input keyevent " + keyCode); }

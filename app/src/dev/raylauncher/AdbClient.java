@@ -34,10 +34,14 @@ final class AdbClient {
     }
 
     static String shell(String host, int port, String command) throws IOException {
+        return shell(host, port, command, 15000);
+    }
+
+    static String shell(String host, int port, String command, int readTimeoutMs) throws IOException {
         Socket s = new Socket();
         try {
             s.connect(new InetSocketAddress(InetAddress.getByName(host), port), 3000);
-            s.setSoTimeout(15000);
+            s.setSoTimeout(readTimeoutMs);
             DataOutputStream out = new DataOutputStream(s.getOutputStream());
             DataInputStream in = new DataInputStream(s.getInputStream());
             send(out, A_CNXN, VERSION, MAX_DATA, bytes("host::\u0000"));

@@ -199,7 +199,7 @@ public class PhoneActivity extends Activity implements DialogInterface.OnClickLi
         web.evaluateJavascript("window.RayBack&&window.RayBack()", new ValueCallback<String>() {
             @Override public void onReceiveValue(String consumed) {
                 if ("true".equals(consumed)) return;
-                if (onTv || manager) showConnect();
+                if (manager) showConnect();
                 else PhoneActivity.super.onBackPressed();
             }
         });
@@ -250,6 +250,10 @@ public class PhoneActivity extends Activity implements DialogInterface.OnClickLi
         calibrated = false;
         onTv = up;
         rayPage = false;
+        if (!up && sharedUrl != null) { // TV off: the link is dropped, it must not open later
+            sharedUrl = null;
+            android.widget.Toast.makeText(this, t("The TV can't be reached", "La TV non è raggiungibile"), android.widget.Toast.LENGTH_LONG).show();
+        }
         if (up) {
             client.origin = "http://" + device.optString("host") + ":" + device.optInt("port");
             web.loadUrl(target(device));
@@ -366,6 +370,7 @@ public class PhoneActivity extends Activity implements DialogInterface.OnClickLi
             else if ("scan".equals(what)) scan();
             else if (what.startsWith("share/"))
                 android.widget.Toast.makeText(this, "ok".equals(what.substring(6)) ? t("Sent to the TV", "Inviato alla TV")
+                        : "down".equals(what.substring(6)) ? t("The TV can't be reached", "La TV non è raggiungibile")
                         : t("The TV could not open it", "La TV non riesce ad aprirlo"), android.widget.Toast.LENGTH_SHORT).show();
             else if ("overlay".equals(what)) startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                     Uri.parse("package:" + getPackageName())));
@@ -527,9 +532,11 @@ public class PhoneActivity extends Activity implements DialogInterface.OnClickLi
             if (accelSensor != null) sensors.registerListener(this, accelSensor, SensorManager.SENSOR_DELAY_GAME, sensorHandler);
         } else if (rotationSensor != null) sensorRunning = sensors.registerListener(this, rotationSensor, fastest, sensorHandler);
         calibrated = false;
+        if (sensorRunning) getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
 
     private void stopMotion() {
+        getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         if (sensorRunning && sensors != null) sensors.unregisterListener(this);
         sensorRunning = false;
         if (sensorThread != null) { sensorThread.quitSafely(); sensorThread = null; }

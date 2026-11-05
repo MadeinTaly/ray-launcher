@@ -64,7 +64,7 @@ final class RayMotionMath {
             float fy = a * (1 - uy * uy) + (1 - a) * uz * uy;
             float fz = -a * uy * uz + (1 - a) * (uz * uz - 1);
             float n = (float) Math.sqrt(fx * fx + fy * fy + fz * fz);
-            if (n < .01f) return emit(-yaw, -wx, dt, sensitivity); // ponytail: exact singular pose, x stays the pitch axis
+            if (n < .01f) return emit(-yaw, -wx, dt, sensitivity); // exact singular pose: x stays the pitch axis
             fx /= n; fy /= n; fz /= n;
             float rx = fy * uz - fz * uy, ry = fz * ux - fx * uz, rz = fx * uy - fy * ux;
             return emit(-yaw, -(wx * rx + wy * ry + wz * rz), dt, sensitivity);

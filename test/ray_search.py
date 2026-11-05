@@ -22,6 +22,10 @@ def home():
     sys.exit("no debug channel")
 
 
+def state_focus():
+    return home()["focus"]
+
+
 def key(name, wait=.5):
     adb("shell", "input", "keyevent", "KEYCODE_" + name)
     time.sleep(wait)
@@ -46,6 +50,11 @@ def search(word):
     check(home()["focus"] == "search", "the search button is the first", home())
     key("DPAD_CENTER", 1)
     check(home()["dialog"], "the search box opens", home())
+    check("mInputShown=true" in adb("shell", "dumpsys", "input_method"), "the keyboard is up at once")
+    adb("shell", "uiautomator", "dump", "/sdcard/ray_ui.xml")
+    ui = adb("shell", "cat", "/sdcard/ray_ui.xml")
+    check("<hierarchy" in ui and "Cancel" in ui, "the dialog is readable", ui[:300])
+    check("Speak" not in ui and "Parla" not in ui, "no Speak button without a microphone")
     adb("shell", "input", "text", word)
     time.sleep(.5)
     key("ENTER", 1.5)
@@ -66,6 +75,27 @@ key("BACK", 1)
 
 h = search("zzzqqq")
 check(not any(r.startswith("watch:") for r in h["row"]), "no false film", h["row"])
-check(len(h["row"]) >= 1, "the D-pad still has somewhere to go", h)
+check(h["row"][-2] == "ph:apps" or h["row"][-3] == "ph:apps", "no result: All apps is a target", h["row"])
+check(h["row"][0].startswith("ph:find:") and h["focusIndex"] == 0, "no result: the first tile is focused", h)
+key("DPAD_DOWN")
+key("DPAD_RIGHT")
+check(state_focus() == "ph:apps", "OK has a target on All apps", home())
+key("DPAD_CENTER", 1)
+check(home()["category"] == "apps", "OK on All apps shows every app", home())
+key("BACK", 1)
+key("BACK", 1)
+
+h = search("demo")
+check(not any(r.startswith("demo.app") for r in h["row"]), "the package name is not searched", h["row"])
+key("BACK", 1)
+
+h = search("film")
+check(h["row"][0] == "demo.app0" and h["focusIndex"] == 0, "the app named like the query is first and focused", h)
+check(h["row"][1].startswith("ph:find:"), "search inside the apps follows", h["row"])
+key("BACK", 1)
+
+h = search("t")
+want = ["watch:Northern Lights", "watch:City at Night", "watch:Mountain Trails", "demo.app1", "demo.app3", "demo.app6"]
+check([r.split(" (")[0] for r in h["row"][:6]] == want, "order: starts with, continue watching, word start, inside", h["row"])
 key("BACK", 1)
 print("ray_search OK")

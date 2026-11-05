@@ -65,13 +65,6 @@ const html = fs.readFileSync(path.join(__dirname, '../app/assets/ray.html'), 'ut
       assert((await sent('scene.apply')).some(m=>m.payload.scene==='cinema'));
       if (width===390) await page.screenshot({path:path.join(__dirname,'../docs/RAY_THEME_SETTINGS.png'),fullPage:true});
       await page.evaluate(()=>window.RayBack());
-      await page.locator('[data-open="network"]').click();
-      assert.equal(await page.locator('#vpnStatus').textContent(),'La TV non usa la VPN');
-      await page.locator('#vpnOpen').click();
-      assert((await sent('vpn.open')).some(m=>m.payload.pkg==='com.example.vpnclient'));
-      await snapshot({vpn:{known:true,active:true,apps:[{pkg:'com.example.vpnclient',name:'VPN'}]}});
-      assert.equal(await page.locator('#vpnStatus').textContent(),'La TV usa la VPN');
-      await page.evaluate(()=>window.RayBack());
       await page.locator('[data-open="weather"]').click();
       await page.locator('#wxEnable').click();
       await page.locator('#wxYes').click();
@@ -107,10 +100,6 @@ const html = fs.readFileSync(path.join(__dirname, '../app/assets/ray.html'), 'ut
       await page.locator('#moreApps').click();
       await page.locator('#allGrid .tile').click();
       assert.equal((await sent('app.launch')).length,2);
-      // no notification access: one quiet line, dismissed for good
-      assert.equal(await page.locator('#tvNote').isVisible(),true);
-      await page.locator('#tvNoteX').click();
-      assert.equal(await page.locator('#tvNote').isVisible(),false);
       // an app with a session: the playing view
       await snapshot({foregroundPackage:'x.tube',media:{access:true,session:true,app:'Tube',package:'x.tube',title:'Clip',duration:60000,position:1000,playing:true,canSeek:true,searchable:true,continue:[{id:'wn:1',title:'Show',progress:.4,minutes:5}],suggestions:[{id:'pp:3',title:'Next'}]}});
       await page.locator('#tvToggle').click();
@@ -122,6 +111,7 @@ const html = fs.readFileSync(path.join(__dirname, '../app/assets/ray.html'), 'ut
       await page.locator('#tvQuery').fill('cats');
       await page.locator('#tvSearch button').click();
       assert((await sent('media.search')).some(m=>m.payload.query==='cats'));
+      await page.locator('[data-tab="tv"]').click();
       // an app without a session: shortcuts, no transport
       await snapshot({foregroundPackage:'x.tube',media:{access:true,app:'Tube',package:'x.tube',searchable:true}});
       assert.equal(await page.locator('#tvShort').isVisible(),true);

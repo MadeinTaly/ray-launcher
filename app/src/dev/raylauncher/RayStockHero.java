@@ -84,7 +84,7 @@ final class RayStockHero extends View {
             metaP.setShadowLayer(8 * u, 0, u, 0x99000000);
         }
         targetF.set(target);
-        int reduce = RayGraphics.capable(context) ? 2 : 3; // the stage is the biggest memory of the home: smaller on a small box
+        int reduce = RayGraphics.capable(context) || !CINEMA.equals(skin.layout) ? 2 : 3; // the small pictures of rivista and lacca stay sharp; // the stage is the biggest memory of the home: smaller on a small box
         front = Bitmap.createBitmap(target.width() / reduce, target.height() / reduce, Bitmap.Config.ARGB_8888);
         back = Bitmap.createBitmap(target.width() / reduce, target.height() / reduce, Bitmap.Config.ARGB_8888);
         backCanvas = new Canvas(back);
@@ -171,7 +171,13 @@ final class RayStockHero extends View {
     private void paintBack(Bitmap cover, int tint) {
         hasBack = cover != null || tint != 0;
         backCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
-        if (cover != null) {
+        if (cover != null && tint != 0) { // an app's picture: whole and centred on its colour, never cropped to fit a circle
+            float bw = back.getWidth(), bh = back.getHeight(), room = LACCA.equals(skin.layout) ? .72f : .86f;
+            float k = Math.min(bw * room / cover.getWidth(), bh * room / cover.getHeight());
+            float dw = cover.getWidth() * k, dh = cover.getHeight() * k;
+            backCanvas.drawColor(tint | 0xff000000);
+            backCanvas.drawBitmap(cover, null, new RectF((bw - dw) / 2, (bh - dh) / 2, (bw + dw) / 2, (bh + dh) / 2), blit);
+        } else if (cover != null) {
             int bw = back.getWidth(), bh = back.getHeight();
             float s = Math.max((float) bw / cover.getWidth(), (float) bh / cover.getHeight());
             int sw = Math.round(bw / s), sh = Math.round(bh / s), x = (cover.getWidth() - sw) / 2, y = (cover.getHeight() - sh) / 2;

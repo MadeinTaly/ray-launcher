@@ -117,6 +117,10 @@ public class DimService extends Service implements Runnable {
             if (intent.hasExtra("refresh")) removeOverlay(); // re-created in the right window by render()
             if (intent.hasExtra("local")) local = intent.getBooleanExtra("local", false);
             if (intent.getBooleanExtra("newkey", false)) newPairingKey(prefs);
+            if (intent.hasExtra("schedule")) { // the TV's own night filter (MainActivity)
+                try { applySchedule(intent.getBooleanExtra("scheduleOn", true), new JSONObject(intent.getStringExtra("schedule"))); }
+                catch (JSONException bad) { }
+            }
         }
         main.removeCallbacks(this);
         run(); // schedule tick now, then every minute

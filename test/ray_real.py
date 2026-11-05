@@ -9,7 +9,7 @@ import base64, json, os, re, socket, struct, subprocess, sys, time
 
 D, PORT = sys.argv[1], int(sys.argv[2])
 PKG = "dev.raylauncher"
-APPS = sys.argv[3:] or ["com.lagradost.cloudstream3", "org.xbmc.kodi", "com.netflix.mediaclient", "org.smarttube.stable"]
+APPS = sys.argv[3:] or ["org.xbmc.kodi", "com.netflix.mediaclient", "org.smarttube.stable"]
 
 
 def adb(*a):

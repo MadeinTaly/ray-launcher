@@ -88,7 +88,7 @@ public class MainActivity extends Activity implements Runnable {
     private LinearLayout left, rows;
     private ScrollView scroll;
     private int sec, row, tickSignature;
-    private boolean inRows, resetScroll, confirmForget, updates;
+    private boolean inRows, resetScroll, confirmForget, confirmNight, updates;
     private boolean filterOn, remoteOn;
     private int red, bright, temp;
     private volatile String[] dbgRows = new String[0];
@@ -149,6 +149,12 @@ public class MainActivity extends Activity implements Runnable {
         if (remoteOn) Compat.startForegroundService(this, new Intent(this, DimService.class).putExtra("remote", true));
         refresh();
         main.postDelayed(this, 2000);
+        if (RayAdb.enabled(this)) new Thread(new Runnable() { // Full access is on: does it still answer?
+            @Override public void run() {
+                RayAdb.probe();
+                main.post(new Runnable() { @Override public void run() { if (shown == MainActivity.this) refresh(); } });
+            }
+        }, "ray-adb-probe").start();
     }
 
     @Override
@@ -248,15 +254,14 @@ public class MainActivity extends Activity implements Runnable {
         toggle(screen, "filter", t("Screen filter", "Filtro schermo"), filterOn, null);
         slider(screen, "red", t("Warm filter", "Filtro caldo"), red, 0, 100, "%");
         slider(screen, "bright", t("Brightness", "Luminosità"), bright, 5, 100, "%");
-        slider(screen, "temp", t("Colour temperature (lower = redder)", "Colore (più basso = più rosso)"), temp, 1000, 4000, " K");
-        boolean hasSlots;
-        try { hasSlots = new JSONArray(DimService.todaySlots(prefs.getString("schedule", "[]"))).length() > 0; }
-        catch (JSONException bad) { hasSlots = false; }
-        add(screen, 'i', "schedule", t("Schedule", "Programmazione"),
-                !hasSlots ? t("not set", "non impostata") : onOff(prefs.getBoolean("schedule_on", false)),
-                t("Set it from the phone remote", "Impostala dal telefono"));
+        slider(screen, "temp", t("Colour", "Colore"), temp, 1000, 4000, " K");
+        int night = nightKind();
+        add(screen, 't', "night", t("Night filter", "Filtro di notte"), confirmNight ? t("press OK again", "premi di nuovo OK") : onOff(night == 1 && prefs.getBoolean("schedule_on", false)),
+                night == 2 ? t("Set from the phone", "Impostato dal telefono") : null);
+        add(screen, 'c', "nfrom", t("From", "Dalle"), hhmm(prefs.getInt("night_from", 22 * 60)), null);
+        add(screen, 'c', "nto", t("To", "Alle"), hhmm(prefs.getInt("night_to", 7 * 60)), null);
         boolean dark = DimAccessibilityService.instance != null;
-        add(screen, 'a', "a11y", t("Full darkness", "Buio totale"), onOff(dark), dark ? null
+        add(screen, 'a', "a11y", t("Cover the whole screen", "Copri tutto lo schermo"), onOff(dark), dark ? null
                 : t("To cover the screensaver and the system bars too (and for full darkness), enable RAY in Accessibility",
                 "Per coprire anche lo screensaver e le barre di sistema (e per il buio totale), attiva RAY in Accessibilità"));
 
@@ -268,16 +273,13 @@ public class MainActivity extends Activity implements Runnable {
 
         Section phone = new Section("phone", t("Phone", "Telefono"));
         toggle(phone, "remote", t("Phone remote", "Telecomando dal telefono"), remoteOn, null);
-        add(phone, 'a', "pair", t("Pair a phone", "Abbina il telefono"), null, null);
+        add(phone, 'a', "pair", t("Pair", "Abbina"), null, null);
         add(phone, 'i', "phones", t("Connected phones", "Telefoni collegati"), String.valueOf(RaySocket.clientCount()), null);
-        add(phone, 'a', "forget", t("Forget all paired phones", "Dimentica tutti i telefoni abbinati"),
+        add(phone, 'a', "forget", t("Forget", "Dimentica"),
                 confirmForget ? t("press OK again", "premi di nuovo OK") : null, null);
-        add(phone, 'i', "optional", t("Optional: the remote control alone is enough", "Facoltativo: basta il telecomando"), null, null);
-        add(phone, 'a', "pointer", t("Pointer over apps", "Puntatore sopra le app"), onOff(Settings.canDrawOverlays(this)), null);
-        add(phone, 'a', "media", t("App companion access", "Accesso della companion app"), null, null);
 
         Section home = new Section("home", t("Home", "Home"));
-        add(home, 'a', "adb", t("Full access", "Accesso completo"), onOff(RayAdb.enabled(this)), t(
+        add(home, 'a', "adb", t("Full access", "Accesso completo"), RayAdb.enabled(this) && RayAdb.broken ? t("Unavailable, try again", "Non disponibile, riprova") : onOff(RayAdb.enabled(this)), t(
                 "One press, if this device allows it: continue watching from every app, what is playing, the phone working over apps. It also downloads the posters those apps publish.",
                 "Una pressione, se il dispositivo lo consente: continua a guardare di tutte le app, cosa è in riproduzione, il telefono che comanda sopra le app. Scarica anche le locandine pubblicate da quelle app."));
         if (checkSelfPermission(READ_TV_LISTINGS) != PackageManager.PERMISSION_GRANTED)
@@ -288,9 +290,12 @@ public class MainActivity extends Activity implements Runnable {
             String city = prefs.getString("ray_weather_city", "");
             add(home, 'a', "city", t("City", "Città"), city.isEmpty() ? t("not set", "non impostata") : city, null);
         }
+        add(home, 'a', "apps", t("Manage apps", "Gestisci le app"), null, null);
         add(home, 'a', "inputs", t("TV inputs", "Ingressi TV"), null, null);
 
-        Section about = new Section("about", t("About", "Info"));
+        Section about = new Section("about", t("Advanced", "Avanzate"));
+        add(about, 'a', "pointer", t("Pointer over apps", "Puntatore sopra le app"), onOff(Settings.canDrawOverlays(this)), null);
+        add(about, 'a', "media", t("App companion access", "Accesso della companion app"), null, null);
         JSONObject vpn = RayVpn.state(this);
         add(about, 'i', "vpnstate", "VPN", vpn.optBoolean("active") ? t("in use", "in uso") : t("not in use", "non in uso"), null);
         JSONArray apps = vpn.optJSONArray("apps");
@@ -303,21 +308,21 @@ public class MainActivity extends Activity implements Runnable {
             }
         add(about, 'a', "vpn:", t("VPN settings", "Impostazioni VPN"), null, null);
         if (updates) {
-            toggle(about, "upd", t("Check for updates at start", "Controlla aggiornamenti all’avvio"), Updater.enabled(this), null);
-            toggle(about, "beta", t("Beta updates", "Aggiornamenti beta"), Updater.beta(this),
+            toggle(about, "upd", t("Updates", "Aggiornamenti"), Updater.enabled(this), null);
+            toggle(about, "beta", t("Beta", "Beta"), Updater.beta(this),
                     !Updater.beta(this) && Updater.versionName(this).contains("-")
                             ? t("Stays on this beta until a newer stable is out", "Resta su questa beta finché non esce una stabile più nuova") : null);
         }
         boolean mcp = RayMcp.enabled(this);
-        toggle(about, "mcp", t("AI assistants (MCP)", "Assistenti AI (MCP)"), mcp,
-                t("Lets an AI assistant on your network (for example Claude Code) control this TV like the phone remote: "
+        toggle(about, "mcp", t("AI assistants", "Assistenti AI"), mcp,
+                t("Lets an AI assistant on your network control this TV like the phone remote: "
                 + "open apps, press keys, change the skin, the filter and the music. It needs the pairing key.",
-                "Permette a un assistente AI nella tua rete (per esempio Claude Code) di comandare questa TV come il telecomando: "
+                "Permette a un assistente AI nella tua rete di comandare questa TV come il telecomando: "
                 + "aprire app, premere tasti, cambiare skin, filtro e musica. Serve la chiave di abbinamento."));
         String command = mcp ? RayMcp.command(this) : null;
         // the command carries the pairing key: on screen only when asked for
         if (command != null) add(about, 'a', "mcpcommand", t("Show the command to paste", "Mostra il comando da incollare"), null, null);
-        if (RayDebug.open) toggle(about, "debug", t("Debug panel", "Pannello debug"), RayDebug.enabled(this), null);
+        if (RayDebug.open) toggle(about, "debug", t("Debug", "Debug"), RayDebug.enabled(this), null);
         add(about, 'a', "android", t("Android settings", "Impostazioni Android"), null, null);
         add(about, 'i', "version", t("Version", "Versione"), Updater.versionName(this), null);
         add(about, 'i', "support", t("Support the project", "Sostieni il progetto"), "linktr.ee/made_in_Taly", null);
@@ -338,11 +343,18 @@ public class MainActivity extends Activity implements Runnable {
                 Toast.makeText(this, t("Default wallpaper restored", "Sfondo predefinito ripristinato"), Toast.LENGTH_SHORT).show();
                 break;
             case "filter": filterOn = !filterOn; applyFilter(); break;
+            case "night": {
+                int kind = nightKind();
+                if (kind == 2 && !confirmNight) { confirmNight = true; break; } // replaces the schedule made on the phone
+                confirmNight = false;
+                setNight(!(kind == 1 && prefs.getBoolean("schedule_on", false)));
+                return;
+            }
             case "a11y":
                 Compat.enableOrOpenAccessibility(this);
                 break;
             case "adb":
-                if (RayAdb.enabled(this)) { RayAdb.disable(this); break; }
+                if (RayAdb.enabled(this) && !RayAdb.broken) { RayAdb.disable(this); break; }
                 new Thread(new Runnable() {
                     @Override public void run() {
                         final boolean ok = RayAdb.setup(MainActivity.this);
@@ -381,6 +393,7 @@ public class MainActivity extends Activity implements Runnable {
                 RaySocket.stateChanged();
                 break;
             case "city": askCity(); return;
+            case "apps": startActivity(new Intent(this, RayLauncherActivity.class).putExtra("manage", true)); return;
             case "inputs": {
                 Intent intent = new Intent("android.media.tv.action.SETUP_INPUTS");
                 if (intent.resolveActivity(getPackageManager()) == null) intent = new Intent(Settings.ACTION_SETTINGS);
@@ -395,7 +408,7 @@ public class MainActivity extends Activity implements Runnable {
                 break;
             case "mcpcommand": {
                 String line = RayMcp.command(this);
-                if (line != null) new AlertDialog.Builder(this).setTitle(t("AI assistants (MCP)", "Assistenti AI (MCP)")).setMessage(line)
+                if (line != null) new AlertDialog.Builder(this).setTitle(t("AI assistants", "Assistenti AI")).setMessage(line)
                         .setPositiveButton(t("Close", "Chiudi"), null).show();
                 break;
             }
@@ -437,6 +450,12 @@ public class MainActivity extends Activity implements Runnable {
                 prefs.edit().putString(RayGraphics.PREF, next).putBoolean(RayGraphics.SLOW, false).apply();
                 break;
             }
+            case "nfrom": case "nto": {
+                String k = r.id.equals("nfrom") ? "night_from" : "night_to";
+                prefs.edit().putInt(k, wrap(prefs.getInt(k, r.id.equals("nfrom") ? 22 * 60 : 7 * 60) + d * 30, 1440)).apply();
+                if (nightKind() == 1 && prefs.getBoolean("schedule_on", false)) setNight(true);
+                break;
+            }
             case "red": red = Math.max(0, Math.min(100, red + d * 5)); applyFilter(); break;
             case "bright": bright = Math.max(5, Math.min(100, bright + d * 5)); applyFilter(); break;
             case "temp": temp = Math.max(1000, Math.min(4000, temp + d * 100)); applyFilter(); break;
@@ -446,6 +465,32 @@ public class MainActivity extends Activity implements Runnable {
 
     private static int wrap(int i, int n) {
         return (i % n + n) % n;
+    }
+
+    private static String hhmm(int minutes) {
+        return String.format(Locale.ROOT, "%02d:%02d", minutes / 60, minutes % 60);
+    }
+
+    /** 1 the TV's own night filter is the schedule, 2 a schedule made on the phone is, 0 none. */
+    private int nightKind() {
+        try {
+            JSONArray slots = new JSONArray(DimService.todaySlots(prefs.getString("schedule", "[]")));
+            for (int i = 0; i < slots.length(); i++) if (!"tv".equals(slots.getJSONObject(i).optString("model"))) return 2;
+            return slots.length() > 0 ? 1 : 0;
+        } catch (JSONException bad) { return 0; }
+    }
+
+    /** The night filter as two daily slots through the schedule of the service: the current look from "From", off from "To". */
+    private void setNight(boolean on) {
+        try {
+            JSONArray slots = new JSONArray()
+                    .put(new JSONObject().put("time", hhmm(prefs.getInt("night_from", 22 * 60))).put("on", true)
+                            .put("red", red == 0 ? 40 : red).put("bright", bright).put("temp", temp).put("model", "tv"))
+                    .put(new JSONObject().put("time", hhmm(prefs.getInt("night_to", 7 * 60))).put("on", false).put("model", "tv"));
+            Compat.startForegroundService(this, new Intent(this, DimService.class)
+                    .putExtra("schedule", new JSONObject().put("resolved", slots).toString()).putExtra("scheduleOn", on));
+        } catch (JSONException impossible) { }
+        main.postDelayed(new Runnable() { @Override public void run() { if (shown == MainActivity.this) refresh(); } }, 500);
     }
 
     /** Sends the filter to the service; moving a slider also turns the filter on. */
@@ -535,8 +580,8 @@ public class MainActivity extends Activity implements Runnable {
         Section s = sections.get(sec);
         Row r = inRows ? s.rows.get(row) : null;
         boolean adjustable = r != null && (r.kind == 'c' || r.kind == 's');
-        if (confirmForget && !(ok && r != null && "forget".equals(r.id))) {
-            confirmForget = false;
+        if (confirmForget && !(ok && r != null && "forget".equals(r.id)) || confirmNight && !(ok && r != null && "night".equals(r.id))) {
+            confirmForget = confirmNight = false;
             refresh();
             s = sections.get(sec);
             r = inRows ? s.rows.get(row) : null;

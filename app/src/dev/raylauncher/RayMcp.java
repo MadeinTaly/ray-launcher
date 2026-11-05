@@ -9,9 +9,9 @@ import org.json.JSONObject;
 
 /**
  * MCP endpoint (Model Context Protocol, Streamable HTTP transport, JSON responses only, no SSE) at POST /mcp, so an
- * AI assistant such as Claude Code can drive the TV:
+ * AI assistant can drive the TV:
  *
- *   claude mcp add --transport http ray http://TV_IP:8766/mcp --header "X-Key: PAIRING_KEY"
+ *   http://TV_IP:8766/mcp with the header X-Key: PAIRING_KEY
  *
  * Off until enabled on the TV (pref "ray_mcp"); every call needs the pairing key, like the rest of the API. The
  * tools run the same commands as the phone remote (RaySocket.exec), with the same checks.
@@ -35,7 +35,7 @@ final class RayMcp {
     /** The line to paste in a terminal, or null without Wi-Fi. */
     static String command(Context c) {
         String ip = RemoteServer.localIp();
-        return ip == null ? null : "claude mcp add --transport http ray http://" + ip + ":" + RemoteServer.PORT + "/mcp --header \"X-Key: "
+        return ip == null ? null : "http://" + ip + ":" + RemoteServer.PORT + "/mcp --header \"X-Key: "
                 + DimService.pairingKey(c.getSharedPreferences(DimService.PREFS, Context.MODE_PRIVATE)) + "\"";
     }
 

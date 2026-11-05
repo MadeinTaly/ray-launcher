@@ -94,7 +94,7 @@
     "muted": "#C9BDC6",
     "dim": 0.82,
     "focusScale": 1.12,
-    "ringDp": 3,
+    "ringDp": 2,
     "ring": "#00CDFE",
     "shadow": "#B3000000",
     "panelFill": "#59100A1E",

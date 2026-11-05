@@ -118,6 +118,7 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
     private View pointedView;
     private String category = "home";
     private String appSearch = "";
+    private int searchHits;
     private boolean receiverRegistered;
     private List<RayWatchHistory.Entry> watchHistory = Collections.emptyList();
     private int watchHistoryRequest;
@@ -161,6 +162,10 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
         refreshApps();
         run();
         root.post(afterFirstFrame);
+        if (getIntent().getBooleanExtra("manage", false)) { // asked by the settings screen
+            getIntent().removeExtra("manage");
+            showManageApps();
+        }
         if (getIntent().getBooleanExtra("pair", false)) { // asked by the settings screen
             String hint = getIntent().getStringExtra("pairHint");
             getIntent().removeExtra("pair");
@@ -181,7 +186,18 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
         View f = a.getCurrentFocus();
         if (a.category.equals("search")) row.put("searched:" + (a.appSearch.isEmpty() ? "no" : "yes"));
         Object focus = f == null ? null : f.getTag();
-        return new JSONObject().put("active", true).put("skin", a.skin.id).put("layout", a.skin.layout).put("day", a.dayMode)
+        JSONArray labels = new JSONArray(); // texts and the phone pill, in pixels of a 1080p screen
+        float k = 1920f / Math.max(1, a.root.getWidth());
+        ArrayList<View> shown = new ArrayList<>();
+        for (int i = 0; i < a.root.getChildCount(); i++) shown.add(a.root.getChildAt(i));
+        for (int i = 0; a.cardLayer != null && i < a.cardLayer.getChildCount(); i++) shown.add(a.cardLayer.getChildAt(i));
+        for (View v : shown) {
+            if (v.getVisibility() != View.VISIBLE || v.getWidth() == 0 || !(v instanceof TextView && ((TextView) v).getText().length() > 0 || v == a.connectPanel)) continue;
+            int[] at = new int[2];
+            v.getLocationInWindow(at);
+            labels.put(new JSONArray().put(Math.round(at[0] * k)).put(Math.round(at[1] * k)).put(Math.round((at[0] + v.getWidth()) * k)).put(Math.round((at[1] + v.getHeight()) * k)));
+        }
+        return new JSONObject().put("labels", labels).put("active", true).put("skin", a.skin.id).put("layout", a.skin.layout).put("day", a.dayMode)
                 .put("category", a.category).put("apps", a.apps.size()).put("watch", a.watchHistory.size()).put("row", row)
                 .put("focus", focus == null ? "none" : focus instanceof RayWatchHistory.Entry ? "watch:" + ((RayWatchHistory.Entry) focus).title : String.valueOf(focus))
                 .put("focusIndex", a.appViews.indexOf(f)).put("stage", a.heroItem == null ? "none" : a.heroItem instanceof AppEntry ? ((AppEntry) a.heroItem).name : String.valueOf(a.heroItem))
@@ -438,7 +454,10 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
         if (!category.equals("home")) {
             int n = 0;
             for (AppEntry a : apps) if (categoryMatches(a, category)) n++;
-            if (category.equals("search")) stockHero.showGrid("\u201c" + appSearch + "\u201d", item instanceof String && ((String) item).startsWith("ph:find:") ? copy("Press OK to search inside this app", "Premi OK per cercare dentro questa app") : copy("Press OK to open", "Premi OK per aprire"));
+            boolean inside = item instanceof String && ((String) item).startsWith("ph:find:");
+            if (category.equals("search") && searchHits == 0) stockHero.showGrid(String.format(copy("No results for \u201c%s\u201d", "Non trovo \u00ab%s\u00bb"), appSearch),
+                    inside ? copy("Press OK to search inside this app", "Premi OK per cercare dentro questa app") : copy("Press OK to see all apps", "Premi OK per vedere tutte le app"));
+            else if (category.equals("search")) stockHero.showGrid("\u201c" + appSearch + "\u201d", inside ? copy("Press OK to search inside this app", "Premi OK per cercare dentro questa app") : copy("Press OK to open", "Premi OK per aprire"));
             else stockHero.showGrid(copy("All apps", "Tutte le app"), n + " app");
         } else if (item instanceof RayWatchHistory.Entry) {
             RayWatchHistory.Entry e = (RayWatchHistory.Entry) item;
@@ -538,6 +557,14 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
 
     // ---- the home: layout and look in docs/SKIN_FORMAT.md ----
 
+    /** The four buttons at the top right, in pixels of a 1080p screen (the layout scales them): the disc size is the one number to tune for distance. */
+    private static final float ACTION_SIZE = 66, ACTION_X = 1333, ACTION_Y = 72, ACTION_PITCH = 128, ACTION_LABEL = 24, ACTION_LABEL_Y = 151, ACTION_LABEL_BOX = 146;
+
+    /** Text over a wallpaper: a soft shadow, light on light themes. */
+    private void shade(TextView t) {
+        t.setShadowLayer(6 * unit, 0, 1.5f * unit, skin.light ? 0xE6FFFFFF : 0xE6000000);
+    }
+
     private TextView stockText(String text, float dp, Typeface face, int color) {
         TextView t = new TextView(this);
         t.setText(text);
@@ -572,15 +599,18 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
         cardLayer.setClipChildren(false);
         root.addView(cardLayer, new FrameLayout.LayoutParams(-1, -1));
         clock = stockText("", 58, skin.cubeA != 0 ? Fonts.chakra(this) : "cinema".equals(skin.layout) ? Fonts.display(this, 400) : Fonts.serif(), skin.textColor);
+        shade(clock);
         clock.setLetterSpacing(-.035f);
         addAt(root, clock, width, height, new float[]{.05f, .055f, .24f, .12f});
         dateView = stockText("", 19, reg, skin.mutedColor);
+        shade(dateView);
         addAt(root, dateView, width, height, new float[]{.05f, .165f, .3f, .04f});
         weatherView = stockText("", 19, reg, skin.mutedColor);
+        shade(weatherView);
         addAt(root, weatherView, width, height, new float[]{.05f, .202f, .3f, .04f});
         String[] actions = {"search", "pair", "sources", "settings"};
         float[][] actionRects = new float[4][];
-        for (int i = 0; i < 4; i++) actionRects[i] = new float[]{(956 + 72 * i) / 1280f, 48 / 720f, 44 / 1280f, 44 / 720f};
+        for (int i = 0; i < 4; i++) actionRects[i] = new float[]{(ACTION_X + ACTION_PITCH * i) / 1920f, ACTION_Y / 1080f, ACTION_SIZE / 1920f, ACTION_SIZE / 1080f};
         for (int i = 0; i < actions.length; i++) {
             String tag = actions[i];
             StockAction a = new StockAction(this, tag, actionIcon(tag), skin, unit);
@@ -598,8 +628,10 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
             TextView word = stockText("search".equals(tag) ? copy("Search", "Cerca") : "pair".equals(tag) ? copy("Phone", "Telefono")
                     : "sources".equals(tag) ? copy("Inputs", "Ingressi") : copy("Settings", "Impostazioni"), 13, Fonts.regular(this), skin.textColor);
             word.setGravity(Gravity.CENTER_HORIZONTAL);
+            word.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, ACTION_LABEL * height / 1080f);
+            shade(word);
             float[] r = actionRects[i];
-            addAt(root, word, width, height, new float[]{r[0] - .02f, r[1] + r[3] + .012f, r[2] + .04f, .035f});
+            addAt(root, word, width, height, new float[]{r[0] + r[2] / 2 - ACTION_LABEL_BOX / 2f / 1920f, ACTION_LABEL_Y / 1080f, ACTION_LABEL_BOX / 1920f, 32 / 1080f});
         }
         // connect: a pill while a phone is here (a phone is optional), with a VPN badge
         connectPanel = new LinearLayout(this);
@@ -622,7 +654,7 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
         vl.leftMargin = Math.round(10 * unit);
         pill.addView(vpnBadge, vl);
         connectPanel.addView(pill, new LinearLayout.LayoutParams(-2, Math.round(40 * unit)));
-        addAt(root, connectPanel, width, height, new float[]{.45f, .07f, .28f, .06f});
+        addAt(root, connectPanel, width, height, new float[]{.40f, .07f, 1306 / 1920f - .40f, .06f});
         connectPanel.setVisibility(View.GONE);
 
         pointer = new RayGlobalControl.Pointer(this);
@@ -666,16 +698,25 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
             rowTitle(copy("Your apps", "Le tue app"), two ? APPS_TOP : ROW_TOP, pad, h);
             stockHero.textBottom(two ? .535f : .69f);
         } else {
-            if (category.equals("search")) for (RayWatchHistory.Entry e : watchHistory) if (RaySearch.matches(e.title, appSearch)) items.add(e);
-            final int firstApp = items.size();
-            for (AppEntry app : apps) if (categoryMatches(app, category)) items.add(app);
             final java.text.Collator order = java.text.Collator.getInstance();
-            Collections.sort(items.subList(firstApp, items.size()), new java.util.Comparator<Object>() {
-                @Override public int compare(Object a, Object b) { return order.compare(((AppEntry) a).name, ((AppEntry) b).name); }
+            final boolean search = category.equals("search");
+            ArrayList<AppEntry> found = new ArrayList<>();
+            for (AppEntry app : apps) if (categoryMatches(app, category)) found.add(app);
+            Collections.sort(found, new java.util.Comparator<AppEntry>() {
+                @Override public int compare(AppEntry a, AppEntry b) {
+                    int byRank = search ? Integer.compare(RaySearch.rank(a.name, appSearch), RaySearch.rank(b.name, appSearch)) : 0;
+                    return byRank != 0 ? byRank : order.compare(a.name, b.name);
+                }
             });
-            if (category.equals("search")) for (AppEntry app : apps) // then the same words inside every app that takes them
-                if (searchable.contains(app.packageName)) items.add("ph:find:" + app.packageName);
-            if (items.isEmpty()) items.add("ph:apps"); // a search with no result: the D-pad still has a target
+            if (search) { // the name starts with it, then what you were watching, then word starts and the rest, then the same words inside each app that takes them
+                int i = 0;
+                while (i < found.size() && RaySearch.rank(found.get(i).name, appSearch) == 0) items.add(found.get(i++));
+                for (RayWatchHistory.Entry e : watchHistory) if (RaySearch.matches(e.title, appSearch)) items.add(e);
+                while (i < found.size()) items.add(found.get(i++));
+                searchHits = items.size();
+                for (AppEntry app : apps) if (searchable.contains(app.packageName)) items.add("ph:find:" + app.packageName);
+                if (searchHits == 0) items.add("ph:apps"); // no result: All apps is a target for OK
+            } else items.addAll(found);
             addGrid(items, GRID_TOP, 6, gap, pad, w, h);
         }
         int chrome = home ? View.VISIBLE : View.GONE;
@@ -780,6 +821,25 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
                 if (st.getTotalTimeInForeground() > 0 && !st.getPackageName().equals(getPackageName()) && !out.contains(st.getPackageName())) out.add(st.getPackageName());
         } catch (RuntimeException unavailable) { }
         return out;
+    }
+
+    /** Every app by name; OK on one opens its menu. */
+    private void showManageApps() {
+        final ArrayList<AppEntry> list = new ArrayList<>(apps);
+        final java.text.Collator order = java.text.Collator.getInstance();
+        Collections.sort(list, new java.util.Comparator<AppEntry>() {
+            @Override public int compare(AppEntry a, AppEntry b) { return order.compare(a.name, b.name); }
+        });
+        String[] names = new String[list.size()];
+        for (int i = 0; i < names.length; i++) names[i] = list.get(i).name;
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle(copy("Manage apps", "Gestisci le app")).setItems(names, new android.content.DialogInterface.OnClickListener() {
+            @Override public void onClick(android.content.DialogInterface d, int which) { showAppMenu(list.get(which)); }
+        }).setNegativeButton(copy("Close", "Chiudi"), null).create();
+        showingDialog = dialog;
+        dialog.setOnDismissListener(new android.content.DialogInterface.OnDismissListener() {
+            @Override public void onDismiss(android.content.DialogInterface dismissed) { if (showingDialog == dismissed) showingDialog = null; }
+        });
+        showStyled(dialog);
     }
 
     /** Long press (or Menu) on an app card: everything you can do with it, in words. */
@@ -1051,7 +1111,7 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
             invalidate();
         }
 
-        /** The button of the owner's portfolio: a wireframe box, front plus left and bottom faces, stroked with a 45 degree gradient; focused, the faces fill. */
+        /** A wireframe box button, front plus left and bottom faces, stroked with a 45 degree gradient; focused, the faces fill. */
         private void drawCube(Canvas canvas, boolean f) {
             float w = getWidth(), h = getHeight(), d = w * .2f, stroke = 2 * u;
             paint.setStrokeWidth(stroke);
@@ -1102,8 +1162,7 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
     }
 
     private boolean categoryMatches(AppEntry app, String selected) {
-        String key = (app.name + " " + app.packageName).toLowerCase(Locale.ROOT);
-        if (selected.equals("search")) return RaySearch.matches(key, appSearch);
+        if (selected.equals("search")) return RaySearch.matches(app.name, appSearch);
         if (selected.equals("home") || selected.equals("apps")) return true;
         if (selected.equals("video")) return app.category == ApplicationInfo.CATEGORY_VIDEO;
         if (selected.equals("games")) return app.category == ApplicationInfo.CATEGORY_GAME
@@ -1242,9 +1301,20 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
     @Override
     protected void onActivityResult(int request, int result, Intent data) {
         super.onActivityResult(request, result, data);
-        if (request != REQUEST_VOICE || result != RESULT_OK || data == null) return;
-        ArrayList<String> said = data.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS);
-        if (said != null && !said.isEmpty()) runSearch(said.get(0));
+        if (request != REQUEST_VOICE || result == RESULT_CANCELED) return;
+        ArrayList<String> said = result == RESULT_OK && data != null ? data.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS) : null;
+        if (said != null && !said.isEmpty() && !said.get(0).trim().isEmpty()) runSearch(said.get(0));
+        else android.widget.Toast.makeText(this, copy("Didn't catch that, try again", "Non ho capito, riprova"), android.widget.Toast.LENGTH_SHORT).show();
+    }
+
+    /** "Speak" needs a recognizer and a microphone on some connected input device (the remote's). */
+    private boolean canSpeak() {
+        if (voiceIntent().resolveActivity(getPackageManager()) == null) return false;
+        for (int id : android.view.InputDevice.getDeviceIds()) {
+            android.view.InputDevice d = android.view.InputDevice.getDevice(id);
+            if (d != null && d.hasMicrophone()) return true;
+        }
+        return false;
     }
 
     private static final int REQUEST_VOICE = 42;
@@ -1277,7 +1347,7 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
         dialog.setButton(AlertDialog.BUTTON_POSITIVE, copy("Search", "Cerca"), new android.content.DialogInterface.OnClickListener() {
             @Override public void onClick(android.content.DialogInterface d, int which) { runSearch(query.getText().toString()); }
         });
-        if (voiceIntent().resolveActivity(getPackageManager()) != null)
+        if (canSpeak())
             dialog.setButton(AlertDialog.BUTTON_NEUTRAL, copy("Speak", "Parla"), new android.content.DialogInterface.OnClickListener() {
                 @Override public void onClick(android.content.DialogInterface d, int which) { startVoice(); }
             });
@@ -1294,6 +1364,8 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
                 if (showingDialog == dialog) showingDialog = null;
             }
         });
+        dialog.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+        query.requestFocus();
         showStyled(dialog);
     }
 
@@ -1333,8 +1405,11 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
             }
             if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) { if (!category.equals("home")) { selectCategory("home", true); appViews.get(appViews.size() - 1).requestFocus(); } return true; }
             View f = getCurrentFocus();
-            if (event.getKeyCode() == KeyEvent.KEYCODE_MENU && f != null && f.getTag() instanceof String
-                    && findApp((String) f.getTag()) != null) { showAppMenu(findApp((String) f.getTag())); return true; }
+            if (event.getKeyCode() == KeyEvent.KEYCODE_MENU) {
+                if (f != null && f.getTag() instanceof String && findApp((String) f.getTag()) != null) showAppMenu(findApp((String) f.getTag()));
+                else showSettings();
+                return true;
+            }
         }
         return super.dispatchKeyEvent(event);
     }
@@ -1489,7 +1564,7 @@ public class RayLauncherActivity extends Activity implements View.OnClickListene
                 activity.requestHome();
             } else if (code == KeyEvent.KEYCODE_MENU) {
                 if (activity.showingDialog != null) activity.showingDialog.dismiss();
-                activity.startActivity(new Intent(activity, MainActivity.class));
+                activity.dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, code));
             } else if (activity.showingDialog != null && activity.showingDialog.isShowing()) {
                 AlertDialog dialog = activity.showingDialog;
                 if (code == KeyEvent.KEYCODE_BACK) dialog.cancel();

@@ -43,6 +43,9 @@ s = state()
 h = s["home"]
 check(h["active"] and h["category"] == "home", "home in front", s)
 check(not h["dialog"], "no question at first start", s)
+check(h["labels"] and all(96 <= b[0] and 54 <= b[1] and b[2] <= 1824 and b[3] <= 1026 for b in h["labels"]), "every label box is inside x 96-1824, y 54-1026", s)
+words = [b for b in h["labels"] if b[2] - b[0] == 146]
+check(len(words) == 4 and max(b[2] for b in words) == 1823 and all(b[1] == 151 for b in words), "the four button labels: 146 px boxes at y 151, right edge 1823", s)
 if s["remote"]["sockets"] == 0:
     check(not h["connectVisible"], "no phone: the home does not ask for one", s)
 row = h["row"]

@@ -10,12 +10,12 @@ import android.os.Looper;
 /**
  * Very quiet background music for the home screen: the CC0 tracks in assets/music (credits in CREDITS.txt there),
  * one after the other, faded in and out. Played only while the home is in front, never asking for audio focus.
- * Pref "ray_music": true/false, absent until the first-run question has been answered. Main thread only.
+ * Pref "ray_music": true/false, off by default, a switch in Settings. Main thread only.
  */
 final class RayAmbient {
     static final String PREF = "ray_music";
     static final String[] TRACKS = {"music/heavenly.ogg", "music/slowstride.ogg", "music/calmtrack.ogg"};
-    private static final float VOLUME = .35f; // under the TV's own volume: ambience, not a soundtrack
+    private static final float VOLUME = .06f; // about -24 dB: barely above audible at a normal TV volume. Calibrated by ear: raise it if too faint
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
 
     private static MediaPlayer player;

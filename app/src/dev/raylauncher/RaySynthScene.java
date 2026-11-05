@@ -20,7 +20,7 @@ import javax.microedition.khronos.egl.EGLDisplay;
 import javax.microedition.khronos.opengles.GL10;
 
 /**
- * Synthwave background (port of the portfolio three.js scene) in plain GLES 2.0,
+ * Synthwave background in plain GLES 2.0,
  * tuned for weak TV boxes: half-res surface, 30 fps cap, ~1700 line vertices.
  * Sun/moon sits right of centre so the left side stays calm for text.
  */

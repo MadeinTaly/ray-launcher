@@ -132,13 +132,13 @@ screen or your input.
 
 ## AI assistants (MCP)
 
-RAY can expose an [MCP](https://modelcontextprotocol.io) endpoint so an assistant such as Claude Code can drive
+RAY can expose an [MCP](https://modelcontextprotocol.io) endpoint so an AI assistant can drive
 the TV: open apps, press keys, change the skin, the screen filter and the background music, read the state and a
 debug log. It is off by default: turn it on in RAY > Settings > AI assistants (MCP) on the TV, which shows the
 line to paste:
 
 ```sh
-claude mcp add --transport http ray http://TV_IP:8766/mcp --header "X-Key: PAIRING_KEY"
+http://TV_IP:8766/mcp  (header X-Key: PAIRING_KEY)
 ```
 
 It uses the pairing key like the rest of the API and plain HTTP on the local network, so anyone with the key on

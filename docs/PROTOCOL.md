@@ -51,7 +51,7 @@ Non-pointer commands receive an acknowledgement and then a fresh snapshot:
 |---|---|---|
 | `launcher.home` | none | Opens RAY home. |
 | `app.launch` | `{"package":"…"}` | Launches an installed app. |
-| `remote.key` | `{"key":"UP\|DOWN\|LEFT\|RIGHT\|OK\|BACK\|HOME\|MENU\|MEDIA_PLAY_PAUSE\|MEDIA_REWIND\|MEDIA_FAST_FORWARD"}` | D-pad/OK control RAY while its home is active. `MENU` opens settings. Media keys use global key injection and require the reported `globalInput` capability. |
+| `remote.key` | `{"key":"UP\|DOWN\|LEFT\|RIGHT\|OK\|BACK\|HOME\|MENU\|MEDIA_PLAY_PAUSE\|MEDIA_REWIND\|MEDIA_FAST_FORWARD"}` | D-pad/OK control RAY while its home is active. `MENU` on an app tile opens that app's menu, elsewhere the settings. Media keys use global key injection and require the reported `globalInput` capability. |
 | `remote.pointer` | `{"x":0..1,"y":0..1}` or `{"visible":false}` | Coordinates are normalized to the display and focus the nearest visible focusable view, including buttons. Explicit pointer updates force it visible; `visible:false` hides it. Over other apps, display requires Android overlay permission or an already-enabled RAY accessibility service. No per-frame ACK. |
 | `remote.motion` | `{"x":0..1,"y":0..1}` | Coordinates are normalized to the display and move the same pointer. It hides after 2 seconds idle; unchanged or sub-2-pixel jitter does not reset that timer, while cumulative movement over 2 pixels wakes it. Over other apps, display requires Android overlay permission or an already-enabled RAY accessibility service. No per-frame ACK. |
 | `filter.set` | subset of `{"on":bool,"red":0..100,"bright":5..100,"temp":1000..6500}` | Controls the screen filter. `brightness` is accepted as an alias of `bright`. |
@@ -90,7 +90,7 @@ UDP port 8767 on the TV carries only relative pointer motion (air mouse; layout 
 
 ## HTTP compatibility
 
-The HTTP routes are: `/api/info`, `/api/state`, `/api/set`, `/api/schedule`, `/api/days`, `/api/audio`. `/api/info` may include additive RAY capability data. HTTP continues to use `X-Key`; WebSocket authenticates with the same pairing key in its first JSON message.
+The HTTP routes are: `/api/info`, `/api/state`, `/api/set`, `/api/schedule`, `/api/days`, `/api/audio`. `/api/schedule` may hold the two flat slots (`model:"tv"`) written by the TV's own Night filter; an editor loads them as custom/off slots. `/api/info` may include additive RAY capability data. HTTP continues to use `X-Key`; WebSocket authenticates with the same pairing key in its first JSON message.
 
 ## Following a TV to a new address
 

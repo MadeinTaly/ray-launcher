@@ -61,6 +61,7 @@ final class RemoteServer extends Thread {
 
     static {
         STATIC.put("/manifest.webmanifest", "application/manifest+json");
+        STATIC.put("/card.svg", "image/svg+xml");
         STATIC.put("/icon-192.png", "image/png");
         STATIC.put("/icon-512.png", "image/png");
         STATIC.put("/apple-touch-icon.png", "image/png");
